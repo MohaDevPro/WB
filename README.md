@@ -365,42 +365,57 @@ WB/
 
 ## 🚀 Getting Started
 
+### Foundation status
+
+WB now contains a **local and CI foundation only**. It includes a Next.js web application, a NestJS API application, shared typed configuration and contracts, and quality scripts. It does **not** yet include authentication, a database, external providers, payments, AI-provider integration, or a production deployment. See `WB_INITIAL_ASSESSMENT.md`, `WB_IMPLEMENTATION_PLAN.md`, and the ADRs in `decisions/` for the current scope and sequencing.
+
 ### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 7+
-- Docker (optional)
+
+- Node.js 22.13.0 (see `.nvmrc`)
+- pnpm 11.21.0 (Corepack-managed)
+
+PostgreSQL, Redis, Docker, cloud credentials, and third-party service configuration are intentionally not required for the foundation increment.
 
 ### Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/ma1amin/WB.git
 cd WB
 
-# Install dependencies
-npm install
+# Enable the repository-declared package manager and install the committed dependency graph
+corepack enable
+pnpm install --frozen-lockfile
 
-# Set up environment variables
+# Create a local-only configuration file with safe defaults
 cp .env.example .env
-
-# Run database migrations
-npm run db:migrate
-
-# Start development server
-npm run dev
 ```
 
 ### Development
+
+Run the API and web applications in separate terminals.
+
 ```bash
-# Run tests
-npm test
+# Terminal 1 — API
+pnpm --filter @wb/api dev
 
-# Build for production
-npm run build
-
-# Start production server
-npm run start
+# Terminal 2 — web experience
+pnpm --filter @wb/web dev
 ```
+
+The API health check is available at `http://127.0.0.1:3001/api/health` and returns only `{ "status": "ok" }`. The web foundation is served by the Next.js development server, typically at `http://localhost:3000`.
+
+### Verification
+
+```bash
+# Run formatting, linting, strict type checks, unit tests, and production builds
+pnpm check
+
+# Review production dependency advisories at high severity or above
+pnpm security:deps
+```
+
+The foundation does not define a production start or deployment command. Such commands will be added only after the required environment, security, backup, observability, and operational decisions have been reviewed.
 
 ---
 

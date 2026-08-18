@@ -1,0 +1,28 @@
+{
+  "name": "wb",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WB — AI-native community and professional ecosystem",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=22.13.0 <23",
+    "pnpm": ">=11.21.0 <12"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @wb/web --filter @wb/api dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm --filter @wb/config build && pnpm --filter @wb/contracts build && pnpm --filter @wb/api typecheck && pnpm --filter @wb/web typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "security:deps": "pnpm audit --prod --audit-level high"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.8.1",
+    "prettier": "3.9.6",
+    "typescript-eslint": "8.67.0"
+  }
+}
