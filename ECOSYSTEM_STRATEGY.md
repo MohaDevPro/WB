@@ -1,6 +1,6 @@
 # Ecosystem Strategy
 
-WK connects four flows:
+WB connects four flows:
 
 People ↔ Knowledge
 People ↔ Opportunities

@@ -1,6 +1,6 @@
 # Platform Architecture
 
-WK starts as a modular monolith. Each domain has explicit boundaries, contracts, data ownership, services, events, tests, and authorization policies. Service extraction occurs only when scale, reliability, security, team ownership, or deployment independence justifies it.
+WB starts as a modular monolith. Each domain has explicit boundaries, contracts, data ownership, services, events, tests, and authorization policies. Service extraction occurs only when scale, reliability, security, team ownership, or deployment independence justifies it.
 
 Core modules include Identity, Community, Events, Learning, Marketplace, Services, Experts, Partnerships, Opportunities, Organizations, Payments, Settlement, Messaging, Notifications, Search, Matching, Trust, Moderation, Advertising, Analytics, AI, Files, Audit, and Compliance.
 

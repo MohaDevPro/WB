@@ -1,8 +1,8 @@
-# 🌟 WK — AI-Native Community & Professional Ecosystem
+# 🌟 WB — AI-Native Community & Professional Ecosystem
 
 <div align="center">
 
-![WK Platform](https://img.shields.io/badge/WK-AI--Native%20Ecosystem-blue)
+![WB Platform](https://img.shields.io/badge/WB-AI--Native%20Ecosystem-blue)
 ![Status](https://img.shields.io/badge/Status-In%20Development-orange)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
@@ -35,7 +35,7 @@
 
 ## Overview
 
-WK is an **AI-native community super-platform** that seamlessly connects people, knowledge, opportunities, services, organizations, and trusted collaboration in one intelligent ecosystem. 
+WB is an **AI-native community super-platform** that seamlessly connects people, knowledge, opportunities, services, organizations, and trusted collaboration in one intelligent ecosystem. 
 
 🌍 **Strategic Position**: Saudi-first, then GCC, Arab, and global expansion with Arabic and English as first-class languages and Arabic-first UX.
 
@@ -46,10 +46,10 @@ The platform combines the reach of a community, the utility of a professional ne
 ## 🎯 Vision & Mission
 
 ### Vision
-WK aims to become a global platform originating from the Arab market where people and organizations can learn, connect, collaborate, discover opportunities, provide and obtain professional services, and build trusted relationships.
+WB aims to become a global platform originating from the Arab market where people and organizations can learn, connect, collaborate, discover opportunities, provide and obtain professional services, and build trusted relationships.
 
 ### Mission
-WK enables people and organizations to turn community participation into practical value: knowledge, trusted relationships, collaboration, opportunities, services, and sustainable economic activity.
+WB enables people and organizations to turn community participation into practical value: knowledge, trusted relationships, collaboration, opportunities, services, and sustainable economic activity.
 
 The platform makes it easier to find the right person, knowledge, service, and opportunity while protecting users and maintaining community quality.
 
@@ -68,7 +68,7 @@ The platform makes it easier to find the right person, knowledge, service, and o
 
 ## ⚖️ Key Principles
 
-WK is governed by 15 non-negotiable principles:
+WB is governed by 15 non-negotiable principles:
 
 1. 🎯 User value before feature volume
 2. 🛡️ Trust before growth
@@ -90,7 +90,7 @@ WK is governed by 15 non-negotiable principles:
 
 ## 🎨 Product Strategy
 
-WK is a **hybrid AI-native community super-platform** with four core ecosystem flows:
+WB is a **hybrid AI-native community super-platform** with four core ecosystem flows:
 
 ### Core Flows
 - 👥 **People ↔ Knowledge**: Learning, expertise, content sharing
@@ -124,7 +124,7 @@ AI improves discovery, matching, onboarding, moderation, personalization, suppor
 
 ## 🏗️ Architecture
 
-WK starts as a **modular monolith** with explicit domain boundaries and a clear path to service extraction when justified by scale, reliability, security, team ownership, or deployment independence.
+WB starts as a **modular monolith** with explicit domain boundaries and a clear path to service extraction when justified by scale, reliability, security, team ownership, or deployment independence.
 
 ### Core Modules
 - 🔐 Identity & Authentication
@@ -254,7 +254,7 @@ Security spans identity, authorization, validation, business rules, data protect
 - **Components**: Secure IAM, secrets management, encryption, application security, API protection, secure file handling, supply-chain security, monitoring, and incident response
 
 ### Privacy & Data Governance
-WK follows data minimization, purpose limitation, access control, retention limits, transparency, user control, secure processing, and auditability.
+WB follows data minimization, purpose limitation, access control, retention limits, transparency, user control, secure processing, and auditability.
 
 #### User Control
 Users control profile, contact, activity, location, social-link, AI-processing where applicable, and personalization preferences.
@@ -270,7 +270,7 @@ Users control profile, contact, activity, location, social-link, AI-processing w
 
 ## 🧩 Platform Layers
 
-WK is organized into 11 architectural layers:
+WB is organized into 11 architectural layers:
 
 1. 🎨 **Experience**: Responsive web, PWA, localization, accessibility
 2. 🆔 **Identity**: Accounts, profiles, authentication, authorization, verification
@@ -311,7 +311,7 @@ Governed agent workflows, ecosystem intelligence, advanced automation, federated
 ## 📁 Repository Structure
 
 ```
-WK/
+WB/
 ├── apps/                 # Application packages
 ├── packages/             # Shared libraries and components
 ├── services/             # Backend services
@@ -374,8 +374,8 @@ WK/
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/ma1amin/WK.git
-cd WK
+git clone https://github.com/ma1amin/WB.git
+cd WB
 
 # Install dependencies
 npm install
@@ -406,7 +406,7 @@ npm run start
 
 ## 🤝 Contributing
 
-WK is currently in development. Contribution guidelines will be established as the project matures.
+WB is currently in development. Contribution guidelines will be established as the project matures.
 
 ### Development Guidelines
 - Follow the project constitution and principles
@@ -421,7 +421,7 @@ WK is currently in development. Contribution guidelines will be established as t
 
 **Proprietary License - All Rights Reserved**
 
-Copyright © 2026 WK. All rights reserved.
+Copyright © 2026 WB. All rights reserved.
 
 This project is proprietary software. Unauthorized copying, distribution, modification, or use of this project is strictly prohibited.
 
@@ -431,6 +431,6 @@ This project is proprietary software. Unauthorized copying, distribution, modifi
 
 **Built with ❤️ for the Arab World and Beyond**
 
-[🌐 Website](https://wk.com) • [📧 Contact](mailto:contact@wk.com) • [📱 Twitter](https://twitter.com/wk)
+[🌐 Website](https://WB.com) • [📧 Contact](mailto:contact@WB.com) • [📱 Twitter](https://twitter.com/WB)
 
 </div>

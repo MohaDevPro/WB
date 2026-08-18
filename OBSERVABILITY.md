@@ -1,6 +1,6 @@
 # Observability
 
-WK requires logs, metrics, traces, health checks, and audit events.
+WB requires logs, metrics, traces, health checks, and audit events.
 
 Use correlation IDs across synchronous and asynchronous workflows.
 

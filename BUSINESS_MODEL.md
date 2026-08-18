@@ -1,6 +1,6 @@
 # Business Model
 
-WK uses a hybrid model.
+WB uses a hybrid model.
 
 Free core: community participation, basic profile, events, groups, discovery, and contribution.
 

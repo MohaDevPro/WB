@@ -1,6 +1,6 @@
 # UI/UX Philosophy
 
-WK should feel professional, approachable, trustworthy, and efficient.
+WB should feel professional, approachable, trustworthy, and efficient.
 
 Use clear hierarchy, restrained visual language, meaningful whitespace, strong primary actions, progressive disclosure, useful empty states, predictable navigation, and visible trust information.
 

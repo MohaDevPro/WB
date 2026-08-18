@@ -2,7 +2,7 @@
 
 ## Product Model
 
-WK is a hybrid AI-native community super-platform.
+WB is a hybrid AI-native community super-platform.
 
 ### Community
 Free participation, groups, discussions, events, recognition, and knowledge sharing.

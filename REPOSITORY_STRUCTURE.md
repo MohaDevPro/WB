@@ -2,7 +2,7 @@
 
 Recommended monorepo:
 
-WK/
+WB/
 ├── apps/
 ├── packages/
 ├── services/

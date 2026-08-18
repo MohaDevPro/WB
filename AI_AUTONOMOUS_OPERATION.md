@@ -1,6 +1,6 @@
 # AI Autonomous Operation
 
-WK is architected for Level 5 autonomy but launches around Level 2–3.
+WB is architected for Level 5 autonomy but launches around Level 2–3.
 
 0 Human only
 1 AI assists

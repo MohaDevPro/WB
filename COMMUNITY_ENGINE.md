@@ -6,4 +6,4 @@ It supports communities, groups, channels, discussions, posts, comments, reactio
 
 WhatsApp, Telegram, LinkedIn, YouTube, X, and Instagram are initially external links only.
 
-Future federated communities may have separate branding, membership, rules, content, and governance while sharing the WK ecosystem.
+Future federated communities may have separate branding, membership, rules, content, and governance while sharing the WB ecosystem.

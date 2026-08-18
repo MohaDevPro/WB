@@ -1,8 +1,8 @@
-# WK Project Constitution
+# WB Project Constitution
 
 ## Purpose
 
-This constitution defines the non-negotiable principles governing WK.
+This constitution defines the non-negotiable principles governing WB.
 
 ## Principles
 
@@ -24,7 +24,7 @@ This constitution defines the non-negotiable principles governing WK.
 
 ## Product
 
-WK is an AI-native community super-platform evolving into a professional ecosystem. It must remain useful without AI while AI progressively improves discovery, matching, personalization, automation, safety, and operations.
+WB is an AI-native community super-platform evolving into a professional ecosystem. It must remain useful without AI while AI progressively improves discovery, matching, personalization, automation, safety, and operations.
 
 ## Business
 

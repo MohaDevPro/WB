@@ -1,6 +1,6 @@
 # Advertising and Sponsorship
 
-WK prioritizes curated sponsorships, event sponsorships, community offers, featured ecosystem placement, and partner promotions.
+WB prioritizes curated sponsorships, event sponsorships, community offers, featured ecosystem placement, and partner promotions.
 
 Traditional paid advertising may also exist in designated spaces.
 
