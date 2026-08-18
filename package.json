@@ -20,8 +20,8 @@
     "security:deps": "pnpm audit --prod --audit-level high"
   },
   "devDependencies": {
-    "@eslint/js": "10.0.1",
-    "eslint": "10.8.1",
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
     "prettier": "3.9.6",
     "typescript-eslint": "8.67.0"
   }
