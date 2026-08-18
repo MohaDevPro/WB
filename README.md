@@ -367,7 +367,7 @@ WB/
 
 ### Foundation status
 
-WB now contains a **local and CI foundation only**. It includes a Next.js web application, a NestJS API application, shared typed configuration and contracts, and quality scripts. The API also includes an OIDC-ready, private-by-default professional-profile boundary with PostgreSQL migrations, strict payload validation, scoped self-service access, rate limiting, and non-sensitive audit events. It does **not** yet include a selected identity provider, an enabled user sign-in UI, a configured database, public profile search, payments, AI-provider integration, or a production deployment. See `WB_INITIAL_ASSESSMENT.md`, `WB_IMPLEMENTATION_PLAN.md`, and the ADRs in `decisions/` for the current scope and sequencing.
+WB now contains an **interactive, local visible-platform demo** and a secure local/CI API foundation. The Next.js experience provides Arabic-first and English localized journeys across discovery, communities, events, and a private-profile preview through clearly labeled illustrative data. The NestJS API provides an OIDC-ready, private-by-default professional-profile boundary with PostgreSQL migrations, strict payload validation, scoped self-service access, rate limiting, and non-sensitive audit events. The demo does **not** yet connect to a selected identity provider, configured database, public profile search, payments, AI-provider integration, or production deployment. See `WB_INITIAL_ASSESSMENT.md`, `WB_IMPLEMENTATION_PLAN.md`, and the ADRs in `decisions/` for the current scope and sequencing.
 
 ### Prerequisites
 
@@ -406,7 +406,7 @@ pnpm --filter @wb/api dev
 pnpm --filter @wb/web dev
 ```
 
-The API health check is available at `http://127.0.0.1:3001/api/health` and returns only `{ "status": "ok" }`. The private profile endpoints are `GET` and `PUT` at `http://127.0.0.1:3001/api/v1/me/profile`; they require complete `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URI` configuration plus a PostgreSQL `DATABASE_URL`. Without those prerequisites, protected profile routes intentionally return a safe `503` rather than bypass authentication. The web foundation is served by the Next.js development server, typically at `http://localhost:3000`.
+The interactive web platform is served by the Next.js development server, typically at `http://localhost:3000`. It uses clearly labeled illustrative data and client-only state until the OIDC and PostgreSQL integrations are configured. The API health check is available at `http://127.0.0.1:3001/api/health` and returns only `{ "status": "ok" }`. The private profile endpoints are `GET` and `PUT` at `http://127.0.0.1:3001/api/v1/me/profile`; they require complete `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URI` configuration plus a PostgreSQL `DATABASE_URL`. Without those prerequisites, protected profile routes intentionally return a safe `503` rather than bypass authentication.
 
 ### Verification
 

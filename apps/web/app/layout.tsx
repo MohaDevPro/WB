@@ -4,8 +4,9 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  description: 'WB foundation application',
-  title: 'WB',
+  description:
+    'WB is an Arabic-first professional platform for learning, trusted connection, and meaningful opportunities.',
+  title: 'WB | مساحة مهنية حيّة',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
