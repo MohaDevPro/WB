@@ -11,5 +11,5 @@ export default function VerifyEmailPage() {
       .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.message ?? 'تعذر تفعيل البريد'); setState(data.message ?? 'تم تفعيل البريد بنجاح.'); })
       .catch((error: Error) => setState(error.message));
   }, []);
-  return <main className="auth-wrap"><section className="auth-card"><a className="brand" href="/"><span className="brand-mark">و</span><span>WK</span></a><h1 style={{ marginTop: 28 }}>نتيجة التفعيل</h1><p>{state}</p><a className="button primary" href="/">العودة إلى WK</a></section></main>;
+  return <main className="auth-wrap"><section className="auth-card"><a className="brand" href="/"><span className="brand-mark">و</span><span>WB</span></a><h1 style={{ marginTop: 28 }}>نتيجة التفعيل</h1><p>{state}</p><a className="button primary" href="/">العودة إلى WB</a></section></main>;
 }

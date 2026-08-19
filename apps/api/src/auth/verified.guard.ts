@@ -13,7 +13,7 @@ export class EmailVerifiedGuard implements CanActivate {
     const allowed = await this.session.canActivate(context);
     if (!allowed) return false;
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    if (!request.user?.emailVerifiedAt) throw new ForbiddenException('Verify your email before using WK');
+    if (!request.user?.emailVerifiedAt) throw new ForbiddenException('Verify your email before using WB');
     return true;
   }
 }

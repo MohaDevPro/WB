@@ -5,7 +5,7 @@ import { query } from './db';
 export class HealthController {
   @Get()
   health() {
-    return { status: 'ok', service: 'wk-api', version: 'v0' };
+    return { status: 'ok', service: 'wb-api', version: 'v0' };
   }
 
   @Get('ready')

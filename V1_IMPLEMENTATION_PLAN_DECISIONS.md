@@ -1,4 +1,4 @@
-# WK V1 Decision Log
+# WB V1 Decision Log
 
 هذا السجل يلخص القرارات التي تحكم الانتقال من V0 إلى V1.
 

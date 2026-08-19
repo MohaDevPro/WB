@@ -18,10 +18,10 @@ async function bootstrap() {
   app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('WK V0 API')
+    .setTitle('WB V0 API')
     .setDescription('Minimal Auth, Community Core and Events API')
     .setVersion('0.1.0')
-    .addCookieAuth('wk_session')
+    .addCookieAuth('wb_session')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig));
   const port = Number(process.env.API_PORT ?? 4000);

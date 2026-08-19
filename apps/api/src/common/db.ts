@@ -1,7 +1,7 @@
 import { Pool, PoolClient, QueryResultRow } from 'pg';
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? 'postgres://wk:wk@localhost:5432/wk',
+  connectionString: process.env.DATABASE_URL ?? 'postgres://wb:wb@localhost:5432/wb',
   max: 10,
 });
 

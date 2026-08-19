@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-describe('WK V0 boundary rules', () => {
+describe('WB V0 boundary rules', () => {
   it('requires a meaningful password length', () => {
     expect('short'.length >= 10).toBe(false);
     expect('ChangeMe123!'.length >= 10).toBe(true);
