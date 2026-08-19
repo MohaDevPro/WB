@@ -12,6 +12,7 @@ async function bootstrap(): Promise<void> {
 
   application.use(helmet());
   application.setGlobalPrefix('api');
+  application.enableShutdownHooks();
 
   if (runtimeConfig.nodeEnv !== 'production') {
     application.enableCors({
