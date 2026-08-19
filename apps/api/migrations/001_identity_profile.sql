@@ -1,16 +1,28 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE OR REPLACE FUNCTION wb_generate_uuid()
+RETURNS UUID
+LANGUAGE SQL
+VOLATILE
+AS $$
+  SELECT (
+    substr(md5(random()::text || clock_timestamp()::text), 1, 8) || '-' ||
+    substr(md5(random()::text || clock_timestamp()::text), 1, 4) || '-' ||
+    '4' || substr(md5(random()::text || clock_timestamp()::text), 1, 3) || '-' ||
+    substr('89ab', floor(random() * 4)::integer + 1, 1) || substr(md5(random()::text || clock_timestamp()::text), 1, 3) || '-' ||
+    substr(md5(random()::text || clock_timestamp()::text), 1, 12)
+  )::uuid;
+$$;
 
 CREATE TYPE wb_locale AS ENUM ('ar', 'en');
 
 CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT wb_generate_uuid(),
   preferred_locale wb_locale,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE user_identities (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT wb_generate_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   issuer TEXT NOT NULL,
   subject TEXT NOT NULL,
@@ -33,7 +45,7 @@ CREATE TABLE profiles (
 );
 
 CREATE TABLE identity_audit_events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT wb_generate_uuid(),
   actor_user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
   event_type TEXT NOT NULL,
   occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),

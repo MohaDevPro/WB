@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { PoolClient } from 'pg';
-
 import { DatabaseService } from '../database/database.service.js';
+import type { DatabaseClient } from '../database/database.types.js';
 import type { AuthenticatedIdentity } from '../identity/identity-context.js';
 import type { ProfileUpsertInput } from './profile-input.js';
 
@@ -101,7 +100,10 @@ export class ProfileService {
     });
   }
 
-  private async ensureUser(client: PoolClient, identity: AuthenticatedIdentity): Promise<string> {
+  private async ensureUser(
+    client: DatabaseClient,
+    identity: AuthenticatedIdentity,
+  ): Promise<string> {
     const existingIdentity = await client.query<{ user_id: string }>(
       `
         SELECT user_id

@@ -13,6 +13,14 @@ async function bootstrap(): Promise<void> {
   application.use(helmet());
   application.setGlobalPrefix('api');
 
+  if (runtimeConfig.nodeEnv !== 'production') {
+    application.enableCors({
+      credentials: false,
+      methods: ['GET', 'POST', 'PUT', 'PATCH'],
+      origin: ['http://127.0.0.1:3000', 'http://localhost:3000'],
+    });
+  }
+
   await application.listen(runtimeConfig.port, runtimeConfig.host);
 }
 

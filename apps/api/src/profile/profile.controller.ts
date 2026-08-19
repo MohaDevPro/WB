@@ -12,13 +12,13 @@ import {
 import { Throttle } from '@nestjs/throttler';
 
 import type { AuthenticatedIdentity, RequestWithIdentity } from '../identity/identity-context.js';
-import { OidcAuthenticationGuard } from '../identity/oidc-authentication.guard.js';
+import { PlatformAuthenticationGuard } from '../identity/platform-authentication.guard.js';
 import { parseProfileUpsertInput, ProfileValidationError } from './profile-input.js';
 import { ProfileService } from './profile.service.js';
 import type { PrivateProfile } from './profile.service.js';
 
 @Controller('v1/me/profile')
-@UseGuards(OidcAuthenticationGuard)
+@UseGuards(PlatformAuthenticationGuard)
 @Throttle({ default: { limit: 10, ttl: 60_000 } })
 export class ProfileController {
   constructor(@Inject(ProfileService) private readonly profileService: ProfileService) {}
