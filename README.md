@@ -1,4 +1,4 @@
-# WK — Community Core V0 + V1 Roadmap
+# WB — Community Core V0 + V1 Roadmap
 
 <div align="center">
 
@@ -374,8 +374,8 @@ WB/
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/ma1amin/WK.git
-cd WK
+git clone https://github.com/ma1amin/WB.git
+cd WB
 
 # Install dependencies
 pnpm install
@@ -414,7 +414,7 @@ The repository now contains a runnable V0 focused on email/password Auth, mandat
 - [Repository Structure](REPOSITORY_STRUCTURE.md)
 - [API Architecture](API_ARCHITECTURE.md)
 
-The API runs on `http://localhost:4000`, Swagger is available at `http://localhost:4000/docs`, and the Web app runs on `http://localhost:3000`. The default local seed account is `admin@wk.local` with `ChangeMe123!`; change it before using any shared environment.
+The API runs on `http://localhost:4000`, Swagger is available at `http://localhost:4000/docs`, and the Web app runs on `http://localhost:3000`. The default local seed account is `admin@wb.local` with `ChangeMe123!`; change it before using any shared environment.
 
 ---
 

@@ -2,16 +2,16 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-wk}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wk}
-      POSTGRES_DB: ${POSTGRES_DB:-wk}
+      POSTGRES_USER: ${POSTGRES_USER:-wb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wb}
+      POSTGRES_DB: ${POSTGRES_DB:-wb}
     ports:
       - "5432:5432"
     volumes:
-      - wk-postgres:/var/lib/postgresql/data
+      - wb-postgres:/var/lib/postgresql/data
       - ./database/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wk} -d ${POSTGRES_DB:-wk}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wb} -d ${POSTGRES_DB:-wb}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,7 +21,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - wk-redis:/data
+      - wb-redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,13 +32,13 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-wklocal}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-wklocalsecret}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-wblocal}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-wblocalsecret}
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - wk-minio:/data
+      - wb-minio:/data
 
   api:
     build:
@@ -47,10 +47,10 @@ services:
     environment:
       NODE_ENV: development
       API_PORT: 4000
-      DATABASE_URL: postgres://${POSTGRES_USER:-wk}:${POSTGRES_PASSWORD:-wk}@postgres:5432/${POSTGRES_DB:-wk}
+      DATABASE_URL: postgres://${POSTGRES_USER:-wb}:${POSTGRES_PASSWORD:-wb}@postgres:5432/${POSTGRES_DB:-wb}
       WEB_ORIGIN: http://localhost:3000
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM: ${RESEND_FROM:-WK <onboarding@example.com>}
+      RESEND_FROM: ${RESEND_FROM:-WB <onboarding@example.com>}
     ports:
       - "4000:4000"
     depends_on:
@@ -71,6 +71,6 @@ services:
       - api
 
 volumes:
-  wk-postgres:
-  wk-redis:
-  wk-minio:
+  wb-postgres:
+  wb-redis:
+  wb-minio:

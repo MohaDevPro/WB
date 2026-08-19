@@ -121,7 +121,7 @@ export class AuthService {
     );
     const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/verify-email?token=${encodeURIComponent(token)}`;
     if (!this.resend && process.env.NODE_ENV !== 'production' && process.env.EMAIL_MODE === 'console') console.info(`[mail:development:url] ${url}`);
-    await this.sendEmail(email, 'Activate your WK account', `<p>Activate your account: <a href="${url}">Verify email</a></p>`);
+    await this.sendEmail(email, 'Activate your WB account', `<p>Activate your account: <a href="${url}">Verify email</a></p>`);
     return { message: 'Verification email sent' };
   }
 
@@ -137,7 +137,7 @@ export class AuthService {
     );
     const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(token)}`;
     if (!this.resend && process.env.NODE_ENV !== 'production' && process.env.EMAIL_MODE === 'console') console.info(`[mail:development:url] ${url}`);
-    await this.sendEmail(email, 'Reset your WK password', `<p>Reset your password: <a href="${url}">Reset password</a></p>`);
+    await this.sendEmail(email, 'Reset your WB password', `<p>Reset your password: <a href="${url}">Reset password</a></p>`);
     return { message: 'If the account exists, a reset email will be sent.' };
   }
 

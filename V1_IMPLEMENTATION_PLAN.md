@@ -1,4 +1,4 @@
-# WK V1 Implementation Plan
+# WB V1 Implementation Plan
 
 ## الغرض
 
@@ -6,7 +6,7 @@ V1 هي مرحلة التوسع بعد إثبات V0. لا تبدأ V1 قبل ق
 
 ## القرارات المعتمدة
 
-تظل WK منصة مجتمع عام للنقاش والمعرفة مع مجتمعات متخصصة مغلقة. تنشئ Platform Admin المجتمعات والمجموعات والقنوات مركزيًا. يستطيع Community Admin إدارة مجتمعه، لكنه لا يحذف المجتمع ولا ينشئ مجموعة. يبقى Auth الأساسي بريدًا وكلمة مرور، والبريد ورقم الجوال إلزاميين عند التسجيل، مع تفعيل البريد عبر Resend قبل الاستخدام وتأجيل OTP.
+تظل WB منصة مجتمع عام للنقاش والمعرفة مع مجتمعات متخصصة مغلقة. تنشئ Platform Admin المجتمعات والمجموعات والقنوات مركزيًا. يستطيع Community Admin إدارة مجتمعه، لكنه لا يحذف المجتمع ولا ينشئ مجموعة. يبقى Auth الأساسي بريدًا وكلمة مرور، والبريد ورقم الجوال إلزاميين عند التسجيل، مع تفعيل البريد عبر Resend قبل الاستخدام وتأجيل OTP.
 
 المعمارية Modular Monolith داخل Monorepo، باستخدام Next.js وNestJS وPostgreSQL وRedis وS3-compatible self-hosted في Docker Compose، مع REST/OpenAPI وبيئات local/staging/production وGitHub Actions. لا تستخدم V1 microservices أو Kubernetes.
 

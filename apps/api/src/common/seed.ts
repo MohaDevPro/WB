@@ -12,18 +12,18 @@ async function main() {
        VALUES ($1, $2, $3, $4, 'platform_admin', now())
        ON CONFLICT (email) DO UPDATE SET platform_role = 'platform_admin', email_verified_at = COALESCE(users.email_verified_at, now())
        RETURNING id`,
-      [process.env.SEED_ADMIN_EMAIL ?? 'admin@wk.local', passwordHash, '+966500000000', 'WK Platform Admin'],
+      [process.env.SEED_ADMIN_EMAIL ?? 'admin@wb.local', passwordHash, '+966500000000', 'WB Platform Admin'],
     );
     const userId = user.rows[0].id;
     const publicCommunity = await client.query<{ id: string }>(
       `INSERT INTO communities (name, slug, description, visibility) VALUES ($1, $2, $3, 'public')
        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      ['WK Community', 'wk-community', 'المجتمع العام للنقاش والمعرفة'],
+      ['WB Community', 'wb-community', 'المجتمع العام للنقاش والمعرفة'],
     );
     const closedCommunity = await client.query<{ id: string }>(
       `INSERT INTO communities (name, slug, description, visibility) VALUES ($1, $2, $3, 'closed')
        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      ['WK Builders', 'wk-builders', 'مجتمع مغلق للبنّاء والمساهمين'],
+      ['WB Builders', 'wb-builders', 'مجتمع مغلق للبنّاء والمساهمين'],
     );
     for (const communityId of [publicCommunity.rows[0].id, closedCommunity.rows[0].id]) {
       await client.query(
