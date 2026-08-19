@@ -1,0 +1,17 @@
+{
+  "name": "wk-v0",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.21.0",
+  "scripts": {
+    "dev": "concurrently -k \"pnpm --filter @wk/api dev\" \"pnpm --filter @wk/web dev\"",
+    "build": "pnpm -r build",
+    "check": "pnpm -r check",
+    "test": "pnpm --filter @wk/api test",
+    "db:migrate": "pnpm --filter @wk/api db:migrate",
+    "db:seed": "pnpm --filter @wk/api db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

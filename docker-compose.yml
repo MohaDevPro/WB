@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wk}
+      POSTGRES_DB: ${POSTGRES_DB:-wk}
+    ports:
+      - "5432:5432"
+    volumes:
+      - wk-postgres:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wk} -d ${POSTGRES_DB:-wk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - wk-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-wklocal}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-wklocalsecret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - wk-minio:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: development
+      API_PORT: 4000
+      DATABASE_URL: postgres://${POSTGRES_USER:-wk}:${POSTGRES_PASSWORD:-wk}@postgres:5432/${POSTGRES_DB:-wk}
+      WEB_ORIGIN: http://localhost:3000
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-WK <onboarding@example.com>}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      API_ORIGIN: http://api:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  wk-postgres:
+  wk-redis:
+  wk-minio:

@@ -1,4 +1,4 @@
-# 🌟 WB — AI-Native Community & Professional Ecosystem
+# WK — Community Core V0 + V1 Roadmap
 
 <div align="center">
 
@@ -374,33 +374,47 @@ WB/
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/ma1amin/WB.git
-cd WB
+git clone https://github.com/ma1amin/WK.git
+cd WK
 
 # Install dependencies
-npm install
+pnpm install
 
 # Set up environment variables
 cp .env.example .env
 
-# Run database migrations
-npm run db:migrate
+# Start local infrastructure
+# Requires Docker for PostgreSQL, Redis and MinIO
+docker compose up -d postgres redis minio
 
-# Start development server
-npm run dev
+# Run database migrations and seed
+pnpm db:migrate
+pnpm db:seed
+
+# Start Web and API
+pnpm dev
 ```
 
 ### Development
 ```bash
-# Run tests
-npm test
-
-# Build for production
-npm run build
-
-# Start production server
-npm run start
+# Run checks, tests and production builds
+pnpm check
+pnpm test
+pnpm build
 ```
+
+## V0 Implementation
+
+The repository now contains a runnable V0 focused on email/password Auth, mandatory but unverified phone input, Resend email verification, sessions, a public Community, a closed Community with join requests, admin-created Groups, text Feed posts, one-level comments, one `like` reaction, basic moderation, internal notifications, and one-off public/private Zoom Events.
+
+### Documentation
+
+- [V0 Implementation Plan](V0_IMPLEMENTATION_PLAN.md)
+- [V1 Implementation Plan](V1_IMPLEMENTATION_PLAN.md)
+- [Repository Structure](REPOSITORY_STRUCTURE.md)
+- [API Architecture](API_ARCHITECTURE.md)
+
+The API runs on `http://localhost:4000`, Swagger is available at `http://localhost:4000/docs`, and the Web app runs on `http://localhost:3000`. The default local seed account is `admin@wk.local` with `ChangeMe123!`; change it before using any shared environment.
 
 ---
 
