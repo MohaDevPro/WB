@@ -35,3 +35,19 @@ The authenticated browser session joined the live `Creative Economy` community. 
 ## Confirmed community publishing
 
 With user confirmation, the synthetic Arabic contribution was submitted to the local development database. The interface displayed a publication success notification, cleared the composer, and refreshed the live feed with the new post attributed to the authenticated profile. This validates browser-side community publication against the real persistent backend.
+
+## Expanded ecosystem workspace
+
+After migration 003, the browser-rendered ecosystem view loaded persistent `WB Practice Lab` organization data, the verified `WB Team` expert profile, and the two-module learning path. The Arabic-first responsive layout also presents authenticated forms for creating an organization and maintaining an expert presence; these actions are connected to the real API but were not submitted during this visual pass.
+
+## Private workspace and discovery verification
+
+The authenticated private workspace rendered the persisted learning enrollment notification, community notification, recommendation cards, a pending governed workflow requiring explicit human approval, and the SAR marketplace lifecycle panel with an explicit no-internal-custody policy. The discovery workspace also rendered live opportunities, SAR-formatted service pricing, and the non-mutating semantic-search entry point. No payment, workflow approval, notification mark-read, or service-request write was triggered in this visual pass.
+
+## Semantic search verification
+
+Entering `product` in the discovery search returned four live persisted matches: the Product Builders community, the From idea to impact event, the WB Team expert profile, and the Product strategy session. The results were rendered as cross-platform resource cards in the browser and required no write action.
+
+## Local persistence recovery and marketplace publication
+
+A stale development API process had been left holding the embedded PGlite data directory after an earlier forced service restart. The stale process was removed; its unclean local-data snapshot was preserved under `/tmp/wb-pglite-recovery-20260819`, and the ignored development store was recreated from migrations. The rebuilt API passed health checks. A synthetic authenticated provider then published the persistent `Arabic-first service design` listing at `SAR 2,750`, which appeared alongside the seeded advisory listing through the public marketplace endpoint.

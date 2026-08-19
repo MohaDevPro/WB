@@ -4,16 +4,27 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 
 import {
   api,
+  type AssistantGuidance,
   type Community,
+  type Expert,
+  type LearningPath,
+  type Notification,
+  type Organization,
+  type PaymentIntent,
   type PlatformHome,
   type PlatformEvent,
   type Profile,
+  type Recommendation,
+  type SearchResult,
   type Service,
+  type ServiceRequest,
+  type Workflow,
 } from './api-client';
 import { useAuth } from './auth-provider';
 
 type Locale = 'ar' | 'en';
-type PlatformSection = 'home' | 'discover' | 'community' | 'events' | 'profile';
+type PlatformSection =
+  'home' | 'discover' | 'ecosystem' | 'community' | 'events' | 'workspace' | 'profile';
 type AuthMode = 'login' | 'register';
 
 const navigation: readonly Readonly<{
@@ -24,8 +35,10 @@ const navigation: readonly Readonly<{
 }>[] = [
   { ar: 'الرئيسية', en: 'Home', icon: '⌂', id: 'home' },
   { ar: 'الاكتشاف', en: 'Discover', icon: '⌕', id: 'discover' },
+  { ar: 'النظام المهني', en: 'Ecosystem', icon: '◇', id: 'ecosystem' },
   { ar: 'المجتمعات', en: 'Communities', icon: '◌', id: 'community' },
   { ar: 'اللقاءات', en: 'Events', icon: '□', id: 'events' },
+  { ar: 'مساحتي', en: 'My workspace', icon: '✦', id: 'workspace' },
   { ar: 'ملفي', en: 'My profile', icon: '◉', id: 'profile' },
 ];
 
@@ -44,6 +57,13 @@ const content: Record<
       title: 'Opportunities and services close to your need',
     },
   },
+  ecosystem: {
+    ar: { kicker: 'نظام مهني متصل', title: 'خبرة وتعلّم ومنظمات تبني معاً' },
+    en: {
+      kicker: 'Connected ecosystem',
+      title: 'Expertise, learning, and organizations building together',
+    },
+  },
   events: {
     ar: { kicker: 'تعلّم حي', title: 'لقاءات تصنع اتصالاً حقيقياً' },
     en: { kicker: 'Live learning', title: 'Events that create real connection' },
@@ -58,6 +78,13 @@ const content: Record<
   profile: {
     ar: { kicker: 'مساحتك المهنية', title: 'ملف مهني يبدأ بك' },
     en: { kicker: 'Your professional space', title: 'A professional profile that starts with you' },
+  },
+  workspace: {
+    ar: { kicker: 'مساحة عملك الخاصة', title: 'قراراتك ومعاملاتك وإشعاراتك في مكان واحد' },
+    en: {
+      kicker: 'Your private workspace',
+      title: 'Decisions, transactions, and notifications in one place',
+    },
   },
 };
 
@@ -142,6 +169,28 @@ export default function HomePage() {
   const [discussionCommunity, setDiscussionCommunity] = useState('');
   const [discussionTitle, setDiscussionTitle] = useState('');
   const [discussionBody, setDiscussionBody] = useState('');
+  const [organizations, setOrganizations] = useState<readonly Organization[]>([]);
+  const [experts, setExperts] = useState<readonly Expert[]>([]);
+  const [learningPaths, setLearningPaths] = useState<readonly LearningPath[]>([]);
+  const [notifications, setNotifications] = useState<readonly Notification[]>([]);
+  const [recommendations, setRecommendations] = useState<readonly Recommendation[]>([]);
+  const [serviceRequests, setServiceRequests] = useState<readonly ServiceRequest[]>([]);
+  const [payments, setPayments] = useState<readonly PaymentIntent[]>([]);
+  const [workflows, setWorkflows] = useState<readonly Workflow[]>([]);
+  const [searchResults, setSearchResults] = useState<readonly SearchResult[]>([]);
+  const [assistantPrompt, setAssistantPrompt] = useState('');
+  const [assistantGuidance, setAssistantGuidance] = useState<AssistantGuidance | null>(null);
+  const [expertDraft, setExpertDraft] = useState<{
+    availability: 'limited' | 'open' | 'unavailable';
+    headline: string;
+    specialties: string;
+  }>({
+    availability: 'open',
+    headline: '',
+    specialties: '',
+  });
+  const [organizationDraft, setOrganizationDraft] = useState({ description: '', name: '' });
+  const [serviceDraft, setServiceDraft] = useState({ description: '', priceSar: '', title: '' });
 
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
   const t = useCallback(
@@ -169,9 +218,86 @@ export default function HomePage() {
     document.documentElement.lang = locale;
   }, [direction, locale]);
 
+  const loadEcosystem = useCallback(async () => {
+    try {
+      const [nextOrganizations, nextExperts, nextLearningPaths] = await Promise.all([
+        api.getOrganizations(),
+        api.getExperts(),
+        api.getLearningPaths(),
+      ]);
+      setOrganizations(nextOrganizations);
+      setExperts(nextExperts);
+      setLearningPaths(nextLearningPaths);
+    } catch (reason) {
+      setLoadError(
+        reason instanceof Error ? reason.message : 'Ecosystem data could not be loaded.',
+      );
+    }
+  }, []);
+
+  const loadPrivateWorkspace = useCallback(async (token: string) => {
+    try {
+      const [nextNotifications, nextRecommendations, nextRequests, nextPayments, nextWorkflows] =
+        await Promise.all([
+          api.getNotifications(token),
+          api.getRecommendations(token),
+          api.getServiceRequests(token),
+          api.getPaymentIntents(token),
+          api.getWorkflows(token),
+        ]);
+      setNotifications(nextNotifications);
+      setRecommendations(nextRecommendations);
+      setServiceRequests(nextRequests);
+      setPayments(nextPayments);
+      setWorkflows(nextWorkflows);
+    } catch (reason) {
+      setLoadError(
+        reason instanceof Error ? reason.message : 'Private workspace data could not be loaded.',
+      );
+    }
+  }, []);
+
   useEffect(() => {
     void loadHome();
-  }, [loadHome]);
+    void loadEcosystem();
+  }, [loadEcosystem, loadHome]);
+
+  useEffect(() => {
+    if (session !== null) {
+      void loadPrivateWorkspace(session.accessToken);
+    } else {
+      setNotifications([]);
+      setRecommendations([]);
+      setServiceRequests([]);
+      setPayments([]);
+      setWorkflows([]);
+    }
+  }, [loadPrivateWorkspace, session]);
+
+  useEffect(() => {
+    const normalized = query.trim();
+    if (normalized.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      void api
+        .search(normalized)
+        .then((results) => {
+          if (active) setSearchResults(results);
+        })
+        .catch(() => {
+          if (active) setSearchResults([]);
+        });
+    }, 180);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [query]);
 
   useEffect(() => {
     if (profile !== null) {
@@ -341,11 +467,214 @@ export default function HomePage() {
       setNotice(
         t('أُرسل طلب الخدمة إلى مقدمها.', 'Your service request has been sent to the provider.'),
       );
+      await loadPrivateWorkspace(token);
     } catch (reason) {
       setNotice(
         reason instanceof Error
           ? reason.message
           : t('تعذر إرسال الطلب.', 'Could not send the request.'),
+      );
+    }
+  };
+
+  const createOrganization = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.createOrganization(token, organizationDraft);
+      setOrganizationDraft({ description: '', name: '' });
+      setNotice(
+        t(
+          'تم إنشاء منظمتك وتسجيل ملكيتها.',
+          'Your organization has been created and ownership recorded.',
+        ),
+      );
+      await loadEcosystem();
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر إنشاء المنظمة.', 'Could not create the organization.'),
+      );
+    }
+  };
+
+  const saveExpertProfile = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.updateExpertProfile(token, {
+        availability: expertDraft.availability,
+        headline: expertDraft.headline,
+        specialties: expertDraft.specialties
+          .split(',')
+          .map((specialty) => specialty.trim())
+          .filter(Boolean),
+      });
+      setNotice(t('تم تحديث حضورك الخبير.', 'Your expert presence has been updated.'));
+      await loadEcosystem();
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر تحديث ملف الخبير.', 'Could not update the expert profile.'),
+      );
+    }
+  };
+
+  const enrollInLearningPath = async (path: LearningPath): Promise<void> => {
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.enrollInLearningPath(token, path.id);
+      setNotice(t(`بدأت مسار «${path.title}».`, `You have started “${path.title}”.`));
+      await loadPrivateWorkspace(token);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر بدء المسار.', 'Could not start the learning path.'),
+      );
+    }
+  };
+
+  const publishService = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    const parsedPrice = serviceDraft.priceSar.trim();
+    const priceMinor = parsedPrice.length === 0 ? null : Math.round(Number(parsedPrice) * 100);
+    if (priceMinor !== null && (!Number.isSafeInteger(priceMinor) || priceMinor < 0)) {
+      setNotice(t('أدخل سعراً صحيحاً بالريال السعودي.', 'Enter a valid SAR amount.'));
+      return;
+    }
+
+    try {
+      await api.createService(token, {
+        currency: 'SAR',
+        description: serviceDraft.description,
+        priceMinor,
+        title: serviceDraft.title,
+      });
+      setServiceDraft({ description: '', priceSar: '', title: '' });
+      setNotice(
+        t(
+          'تم نشر خدمتك في السوق المهني.',
+          'Your service has been published in the professional marketplace.',
+        ),
+      );
+      await loadHome();
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر نشر الخدمة.', 'Could not publish the service.'),
+      );
+    }
+  };
+
+  const requestAssistantGuidance = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      const guidance = await api.askAssistant(token, assistantPrompt);
+      setAssistantGuidance(guidance);
+      setNotice(t('تم إعداد إرشاد قابل للمراجعة.', 'Reviewable guidance is ready.'));
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر إعداد الإرشاد.', 'Could not prepare guidance.'),
+      );
+    }
+  };
+
+  const preparePayment = async (serviceRequestId: string): Promise<void> => {
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.createPaymentIntent(token, serviceRequestId, 'local-sandbox');
+      setNotice(
+        t(
+          'تم إعداد نية دفع بالريال السعودي بانتظار التأكيد.',
+          'A SAR payment intent is prepared pending confirmation.',
+        ),
+      );
+      await loadPrivateWorkspace(token);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر إعداد الدفع.', 'Could not prepare payment.'),
+      );
+    }
+  };
+
+  const confirmPayment = async (paymentId: string): Promise<void> => {
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.confirmPaymentIntent(token, paymentId);
+      setNotice(
+        t(
+          'تم تسجيل تأكيد الدفع في بيئة التطوير.',
+          'Payment confirmation was recorded in the development environment.',
+        ),
+      );
+      await loadPrivateWorkspace(token);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('Could not confirm payment.', 'Could not confirm payment.'),
+      );
+    }
+  };
+
+  const reviewNotification = async (notification: Notification): Promise<void> => {
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.markNotificationRead(token, notification.id);
+      await loadPrivateWorkspace(token);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر تحديث الإشعار.', 'Could not update notification.'),
+      );
+    }
+  };
+
+  const approveWorkflow = async (workflow: Workflow): Promise<void> => {
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.approveWorkflow(token, workflow.id);
+      setNotice(
+        t(
+          'تمت الموافقة على سير العمل دون تنفيذ خارجي.',
+          'Workflow approved; no external action was executed.',
+        ),
+      );
+      await loadPrivateWorkspace(token);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر اعتماد سير العمل.', 'Could not approve workflow.'),
       );
     }
   };
@@ -782,6 +1111,289 @@ export default function HomePage() {
                   </p>
                 </div>
               ) : null}
+              {query.trim().length >= 2 ? (
+                <section className="search-results-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <p>{t('بحث دلالي متصل', 'Connected semantic search')}</p>
+                      <h2>{t('نتائج عبر WB', 'Results across WB')}</h2>
+                    </div>
+                    <span className="live-form-label">{searchResults.length}</span>
+                  </div>
+                  <div className="result-list">
+                    {searchResults.map((result) => (
+                      <article key={`${result.type}-${result.id}`}>
+                        <small>{result.type.replace('_', ' ')}</small>
+                        <strong>{result.title}</strong>
+                        <p>{result.description}</p>
+                      </article>
+                    ))}
+                    {searchResults.length === 0 ? (
+                      <p className="empty-inline">
+                        {t('لا توجد نتائج موسعة بعد.', 'No broader results yet.')}
+                      </p>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+            </section>
+          ) : null}
+
+          {activeSection === 'ecosystem' ? (
+            <section className="ecosystem-view connected-view">
+              <section className="ecosystem-grid">
+                <div className="panel ecosystem-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <p>{t('منظمات حقيقية', 'Real organizations')}</p>
+                      <h2>{t('مساحات للعمل المنظم', 'Spaces for organized work')}</h2>
+                    </div>
+                    <span className="live-form-label">{organizations.length}</span>
+                  </div>
+                  <div className="compact-list">
+                    {organizations.map((organization) => (
+                      <article key={organization.id}>
+                        <span className="type-dot">◇</span>
+                        <div>
+                          <strong>{organization.name}</strong>
+                          <p>
+                            {organization.description ??
+                              t('منظمة WB موثقة.', 'A verified WB organization.')}
+                          </p>
+                        </div>
+                        <small>
+                          {organization.memberCount} {t('أعضاء', 'members')}
+                        </small>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+                <div className="panel ecosystem-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <p>{t('خبراء متاحون', 'Available experts')}</p>
+                      <h2>{t('ابحث عن معرفة موثوقة', 'Find trusted knowledge')}</h2>
+                    </div>
+                    <span className="live-form-label">{experts.length}</span>
+                  </div>
+                  <div className="compact-list">
+                    {experts.map((expert) => (
+                      <article key={expert.userId}>
+                        <span className="avatar avatar-small avatar-teal">
+                          {initials(expert.displayName)}
+                        </span>
+                        <div>
+                          <strong>
+                            {expert.displayName}{' '}
+                            {expert.isVerified ? <span className="verified-mark">✓</span> : null}
+                          </strong>
+                          <p>{expert.headline}</p>
+                          <em>{expert.specialties.join(' · ')}</em>
+                        </div>
+                        <small>{expert.availability}</small>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </section>
+              <section className="learning-panel">
+                <div>
+                  <p>{t('تعلّم عملي', 'Practical learning')}</p>
+                  <h2>
+                    {t(
+                      'مسارات قصيرة تنقل المعرفة إلى تجربة',
+                      'Short paths that turn knowledge into an experiment',
+                    )}
+                  </h2>
+                </div>
+                <div className="learning-grid">
+                  {learningPaths.map((path) => (
+                    <article key={path.id}>
+                      <span>
+                        {path.moduleCount} {t('وحدات', 'modules')}
+                      </span>
+                      <h3>{path.title}</h3>
+                      <p>{path.summary}</p>
+                      <button
+                        className="secondary-action"
+                        onClick={() => void enrollInLearningPath(path)}
+                        type="button"
+                      >
+                        {t('ابدأ المسار', 'Start path')} <ArrowIcon />
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              {user !== null ? (
+                <section className="ecosystem-forms">
+                  <form
+                    className="profile-form"
+                    onSubmit={(event) => void createOrganization(event)}
+                  >
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('ملكية واضحة', 'Clear ownership')}</p>
+                        <h2>{t('أنشئ منظمة', 'Create an organization')}</h2>
+                      </div>
+                      <span className="live-form-label">{t('مدقق', 'Audited')}</span>
+                    </div>
+                    <label>
+                      {t('الاسم', 'Name')}
+                      <input
+                        onChange={(event) =>
+                          setOrganizationDraft((current) => ({
+                            ...current,
+                            name: event.target.value,
+                          }))
+                        }
+                        required
+                        value={organizationDraft.name}
+                      />
+                    </label>
+                    <label>
+                      {t('وصف قصير', 'Short description')}
+                      <textarea
+                        onChange={(event) =>
+                          setOrganizationDraft((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                        required
+                        rows={3}
+                        value={organizationDraft.description}
+                      />
+                    </label>
+                    <button className="primary-action" type="submit">
+                      {t('إنشاء المنظمة', 'Create organization')}
+                    </button>
+                  </form>
+                  <form
+                    className="profile-form"
+                    onSubmit={(event) => void saveExpertProfile(event)}
+                  >
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('حضور خبير', 'Expert presence')}</p>
+                        <h2>{t('شارك خبرتك', 'Share your expertise')}</h2>
+                      </div>
+                      <span className="live-form-label">
+                        {t('يمكنك تعديلها', 'You control it')}
+                      </span>
+                    </div>
+                    <label>
+                      {t('عنوانك المهني', 'Professional headline')}
+                      <input
+                        onChange={(event) =>
+                          setExpertDraft((current) => ({
+                            ...current,
+                            headline: event.target.value,
+                          }))
+                        }
+                        required
+                        value={expertDraft.headline}
+                      />
+                    </label>
+                    <label>
+                      {t('تخصصاتك مفصولة بفواصل', 'Specialties, comma separated')}
+                      <input
+                        onChange={(event) =>
+                          setExpertDraft((current) => ({
+                            ...current,
+                            specialties: event.target.value,
+                          }))
+                        }
+                        required
+                        value={expertDraft.specialties}
+                      />
+                    </label>
+                    <label>
+                      {t('التوفر', 'Availability')}
+                      <select
+                        onChange={(event) =>
+                          setExpertDraft((current) => ({
+                            ...current,
+                            availability: event.target.value as 'limited' | 'open' | 'unavailable',
+                          }))
+                        }
+                        value={expertDraft.availability}
+                      >
+                        <option value="open">{t('متاح', 'Open')}</option>
+                        <option value="limited">{t('محدود', 'Limited')}</option>
+                        <option value="unavailable">{t('غير متاح', 'Unavailable')}</option>
+                      </select>
+                    </label>
+                    <button className="primary-action" type="submit">
+                      {t('حفظ حضور الخبير', 'Save expert presence')}
+                    </button>
+                  </form>
+                  <form className="profile-form" onSubmit={(event) => void publishService(event)}>
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('خدمة مهنية', 'Professional service')}</p>
+                        <h2>{t('انشر عرضك بثقة', 'Publish your offering with confidence')}</h2>
+                      </div>
+                      <span className="live-form-label">SAR</span>
+                    </div>
+                    <label>
+                      {t('عنوان الخدمة', 'Service title')}
+                      <input
+                        onChange={(event) =>
+                          setServiceDraft((current) => ({ ...current, title: event.target.value }))
+                        }
+                        required
+                        value={serviceDraft.title}
+                      />
+                    </label>
+                    <label>
+                      {t('وصف الخدمة', 'Service description')}
+                      <textarea
+                        onChange={(event) =>
+                          setServiceDraft((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                        required
+                        rows={3}
+                        value={serviceDraft.description}
+                      />
+                    </label>
+                    <label>
+                      {t('السعر بالريال السعودي', 'Price in SAR')}
+                      <input
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          setServiceDraft((current) => ({
+                            ...current,
+                            priceSar: event.target.value,
+                          }))
+                        }
+                        placeholder={t(
+                          'اختياري لخدمات التسعير بالاتفاق',
+                          'Optional for custom quotes',
+                        )}
+                        value={serviceDraft.priceSar}
+                      />
+                    </label>
+                    <button className="primary-action" type="submit">
+                      {t('نشر الخدمة', 'Publish service')}
+                    </button>
+                  </form>
+                </section>
+              ) : (
+                <button
+                  className="sign-in-callout"
+                  onClick={() => setAccountOpen(true)}
+                  type="button"
+                >
+                  {t(
+                    'سجّل دخولك لإنشاء منظمة أو حضور خبير.',
+                    'Sign in to create an organization or expert presence.',
+                  )}
+                </button>
+              )}
             </section>
           ) : null}
 
@@ -927,6 +1539,261 @@ export default function HomePage() {
                   </p>
                 </div>
               ) : null}
+            </section>
+          ) : null}
+
+          {activeSection === 'workspace' ? (
+            <section className="workspace-view connected-view">
+              {user === null ? (
+                <div className="auth-empty">
+                  <span className="avatar avatar-profile">WB</span>
+                  <p>{t('مساحة خاصة ومحمية', 'Private and protected workspace')}</p>
+                  <h2>
+                    {t(
+                      'تابع قراراتك ومعاملاتك بثقة',
+                      'Follow your decisions and transactions with confidence',
+                    )}
+                  </h2>
+                  <button
+                    className="primary-action"
+                    onClick={() => setAccountOpen(true)}
+                    type="button"
+                  >
+                    {t('دخول آمن', 'Secure sign in')}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <section className="assistant-panel">
+                    <div>
+                      <p>{t('مساعد WB المسؤول', 'Responsible WB assistant')}</p>
+                      <h2>
+                        {t(
+                          'ابحث عن خطوة تالية، لا عن قرار تلقائي',
+                          'Find a next step, not an automatic decision',
+                        )}
+                      </h2>
+                      <span>
+                        {t(
+                          'يستخدم المساعد مصادر WB العامة، ويسجل المهمة، ولا ينفذ عملاً خارجياً.',
+                          'The assistant uses public WB sources, logs the task, and never performs external work.',
+                        )}
+                      </span>
+                    </div>
+                    <form onSubmit={(event) => void requestAssistantGuidance(event)}>
+                      <input
+                        onChange={(event) => setAssistantPrompt(event.target.value)}
+                        placeholder={t(
+                          'مثال: أحتاج خبيراً في استراتيجية المنتج',
+                          'Example: I need a product strategy expert',
+                        )}
+                        required
+                        value={assistantPrompt}
+                      />
+                      <button className="primary-action" type="submit">
+                        {t('إعداد إرشاد', 'Prepare guidance')} <ArrowIcon />
+                      </button>
+                    </form>
+                    {assistantGuidance !== null ? (
+                      <div className="assistant-answer">
+                        <strong>{assistantGuidance.answer}</strong>
+                        <small>
+                          {t('مصادر مرتبطة', 'Linked sources')}:{' '}
+                          {assistantGuidance.citations.map((item) => item.title).join(' · ') ||
+                            t('لا توجد', 'None')}
+                        </small>
+                      </div>
+                    ) : null}
+                  </section>
+                  <section className="workspace-grid">
+                    <div className="panel">
+                      <div className="panel-heading">
+                        <div>
+                          <p>{t('الإشعارات', 'Notifications')}</p>
+                          <h2>{t('كل ما يحتاج انتباهك', 'What needs your attention')}</h2>
+                        </div>
+                        <span className="live-form-label">
+                          {
+                            notifications.filter((notification) => notification.readAt === null)
+                              .length
+                          }
+                        </span>
+                      </div>
+                      <div className="compact-list">
+                        {notifications.map((notification) => (
+                          <article
+                            className={notification.readAt === null ? 'is-unread' : ''}
+                            key={notification.id}
+                          >
+                            <span className="type-dot">◌</span>
+                            <div>
+                              <strong>{notification.title}</strong>
+                              <p>{notification.body}</p>
+                            </div>
+                            {notification.readAt === null ? (
+                              <button
+                                onClick={() => void reviewNotification(notification)}
+                                type="button"
+                              >
+                                {t('تمت المراجعة', 'Reviewed')}
+                              </button>
+                            ) : (
+                              <small>✓</small>
+                            )}
+                          </article>
+                        ))}
+                        {notifications.length === 0 ? (
+                          <p className="empty-inline">
+                            {t('لا توجد إشعارات جديدة.', 'No new notifications.')}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="panel">
+                      <div className="panel-heading">
+                        <div>
+                          <p>{t('مطابقة مدروسة', 'Considered matching')}</p>
+                          <h2>{t('اقتراحات لك', 'Suggestions for you')}</h2>
+                        </div>
+                        <span className="live-form-label">{recommendations.length}</span>
+                      </div>
+                      <div className="compact-list">
+                        {recommendations.map((recommendation) => (
+                          <article key={`${recommendation.type}-${recommendation.resourceId}`}>
+                            <span className="type-dot">↗</span>
+                            <div>
+                              <strong>{recommendation.type}</strong>
+                              <p>{recommendation.reason}</p>
+                            </div>
+                          </article>
+                        ))}
+                        {recommendations.length === 0 ? (
+                          <p className="empty-inline">
+                            {t(
+                              'ستظهر توصياتك بعد تفاعل إضافي.',
+                              'Recommendations will appear after more activity.',
+                            )}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </section>
+                  <section className="transactions-panel">
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('سوق مسؤول', 'Responsible marketplace')}</p>
+                        <h2>
+                          {t(
+                            'طلبات الخدمة والدفع بالريال السعودي',
+                            'Service requests and SAR payment',
+                          )}
+                        </h2>
+                      </div>
+                      <span className="live-form-label">
+                        {t('لا حيازة داخلية للأموال', 'No internal custody')}
+                      </span>
+                    </div>
+                    <div className="transaction-grid">
+                      <div>
+                        {serviceRequests.map((request) => (
+                          <article className="transaction-item" key={request.id}>
+                            <small>{request.status}</small>
+                            <h3>{request.serviceTitle}</h3>
+                            <p>{request.message}</p>
+                            <strong>{formatCurrency(request.priceMinor, 'SAR', locale)}</strong>
+                            {request.status === 'accepted' ? (
+                              <button
+                                className="secondary-action"
+                                onClick={() => void preparePayment(request.id)}
+                                type="button"
+                              >
+                                {t('إعداد دفع آمن', 'Prepare secure payment')}
+                              </button>
+                            ) : null}
+                          </article>
+                        ))}
+                        {serviceRequests.length === 0 ? (
+                          <p className="empty-inline">
+                            {t('ستظهر طلبات الخدمة هنا.', 'Service requests will appear here.')}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div>
+                        {payments.map((payment) => (
+                          <article className="transaction-item" key={payment.id}>
+                            <small>{payment.provider}</small>
+                            <h3>{formatCurrency(payment.amountMinor, payment.currency, locale)}</h3>
+                            <p>
+                              {t('الحالة', 'Status')}: {payment.status}
+                            </p>
+                            {payment.status === 'requires_confirmation' &&
+                            payment.provider === 'local-sandbox' ? (
+                              <button
+                                className="primary-action"
+                                onClick={() => void confirmPayment(payment.id)}
+                                type="button"
+                              >
+                                {t('تأكيد في بيئة التطوير', 'Confirm in development')}
+                              </button>
+                            ) : null}
+                          </article>
+                        ))}
+                        {payments.length === 0 ? (
+                          <p className="empty-inline">
+                            {t(
+                              'ستظهر نوايا الدفع هنا بعد قبول طلب الخدمة.',
+                              'Payment intents appear here after a service request is accepted.',
+                            )}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </section>
+                  <section className="workflow-panel">
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('أتمتة محكومة', 'Governed automation')}</p>
+                        <h2>
+                          {t('كل سير عمل يتطلب موافقتك', 'Every workflow requires your approval')}
+                        </h2>
+                      </div>
+                      <button
+                        className="secondary-action"
+                        onClick={() => void runGovernedAction('workflow')}
+                        type="button"
+                      >
+                        {t('إنشاء موجز', 'Create digest')}
+                      </button>
+                    </div>
+                    <div className="workflow-list">
+                      {workflows.map((workflow) => (
+                        <article key={workflow.id}>
+                          <span>
+                            <small>{workflow.workflowType}</small>
+                            <strong>{workflow.status}</strong>
+                            <em>
+                              {workflow.resultSummary ??
+                                t('بانتظار مراجعتك.', 'Awaiting your review.')}
+                            </em>
+                          </span>
+                          {workflow.status === 'pending_approval' ? (
+                            <button onClick={() => void approveWorkflow(workflow)} type="button">
+                              {t('موافقة بشرية', 'Human approval')}
+                            </button>
+                          ) : (
+                            <small>✓</small>
+                          )}
+                        </article>
+                      ))}
+                      {workflows.length === 0 ? (
+                        <p className="empty-inline">
+                          {t('لا توجد مهام مستقلة مفتوحة.', 'No autonomous tasks are open.')}
+                        </p>
+                      ) : null}
+                    </div>
+                  </section>
+                </>
+              )}
             </section>
           ) : null}
 

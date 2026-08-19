@@ -2261,3 +2261,367 @@ textarea {
     animation: none;
   }
 }
+
+/* Ecosystem, marketplace, and governed-workspace surfaces */
+.search-results-panel,
+.transactions-panel,
+.workflow-panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0.7rem 2rem rgb(36 66 119 / 6%);
+  margin-top: 1.25rem;
+  padding: clamp(1.15rem, 3vw, 1.7rem);
+}
+
+.result-list,
+.compact-list,
+.workflow-list {
+  display: grid;
+  margin-top: 1.1rem;
+}
+
+.result-list article,
+.compact-list article,
+.workflow-list article {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+}
+
+.result-list article {
+  align-items: flex-start;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.result-list small,
+.compact-list small,
+.workflow-list small,
+.transaction-item > small {
+  color: #246850;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.result-list strong,
+.compact-list strong,
+.workflow-list strong {
+  color: var(--navy);
+  font-size: 0.94rem;
+}
+
+.result-list p,
+.compact-list p,
+.workflow-list em {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-style: normal;
+  line-height: 1.65;
+  margin: 0.2rem 0 0;
+}
+
+.compact-list > article > div,
+.workflow-list > article > span {
+  min-width: 0;
+}
+
+.compact-list em {
+  color: var(--ink-faint);
+  display: block;
+  font-size: 0.7rem;
+  font-style: normal;
+  margin-top: 0.35rem;
+}
+
+.compact-list small,
+.workflow-list > article > small {
+  margin-inline-start: auto;
+}
+
+.compact-list button,
+.workflow-list button {
+  background: #ecf6f4;
+  border-radius: 0.6rem;
+  color: #176b55;
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-inline-start: auto;
+  padding: 0.55rem 0.65rem;
+}
+
+.compact-list article.is-unread {
+  background: linear-gradient(90deg, #f2f9f5, transparent);
+  border-inline-start: 0.22rem solid #3aa17e;
+  margin-inline: -0.5rem;
+  padding-inline: 0.5rem;
+}
+
+.verified-mark {
+  align-items: center;
+  background: #1c765c;
+  border-radius: 50%;
+  color: white;
+  display: inline-flex;
+  font-size: 0.58rem;
+  height: 1rem;
+  justify-content: center;
+  margin-inline-start: 0.25rem;
+  vertical-align: middle;
+  width: 1rem;
+}
+
+.ecosystem-view,
+.workspace-view {
+  margin-top: 2.2rem;
+}
+
+.ecosystem-grid,
+.workspace-grid,
+.ecosystem-forms,
+.transaction-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ecosystem-panel {
+  min-height: 18rem;
+}
+
+.learning-panel {
+  background:
+    radial-gradient(circle at 12% 0%, rgb(99 175 146 / 23%), transparent 30%),
+    linear-gradient(135deg, #123d37, #20594c);
+  border-radius: var(--radius-lg);
+  color: white;
+  margin-top: 1.25rem;
+  overflow: hidden;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.learning-panel > div:first-child > p,
+.assistant-panel > div > p {
+  color: #9ee7cc;
+  font-size: 0.73rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.45rem;
+  text-transform: uppercase;
+}
+
+.learning-panel h2,
+.assistant-panel h2 {
+  font-size: clamp(1.3rem, 2.5vw, 1.85rem);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.learning-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  margin-top: 1.4rem;
+}
+
+.learning-grid article {
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 17%);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.learning-grid article > span {
+  color: #9ee7cc;
+  font-size: 0.73rem;
+  font-weight: 800;
+}
+
+.learning-grid h3 {
+  font-size: 1.1rem;
+  margin: 0.7rem 0 0.45rem;
+}
+
+.learning-grid p {
+  color: #d2ece2;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.learning-grid .secondary-action {
+  background: white;
+  border: 0;
+  color: #195b48;
+  margin-top: 1rem;
+}
+
+.ecosystem-forms {
+  margin-top: 1.25rem;
+}
+
+.ecosystem-forms .profile-form .primary-action {
+  border: 0;
+  margin-top: 1.2rem;
+}
+
+.assistant-panel {
+  background: linear-gradient(115deg, #1b2d5d, #274c98);
+  border-radius: var(--radius-lg);
+  color: white;
+  overflow: hidden;
+  padding: clamp(1.3rem, 3vw, 2rem);
+  position: relative;
+}
+
+.assistant-panel::after {
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 50%;
+  content: '';
+  height: 19rem;
+  inset-inline-end: -6rem;
+  position: absolute;
+  top: -12rem;
+  width: 19rem;
+}
+
+.assistant-panel > div,
+.assistant-panel form,
+.assistant-answer {
+  position: relative;
+  z-index: 1;
+}
+
+.assistant-panel > div > span {
+  color: #d5e3ff;
+  display: block;
+  line-height: 1.7;
+  margin-top: 0.65rem;
+  max-width: 48rem;
+}
+
+.assistant-panel form {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 1.1rem;
+}
+
+.assistant-panel input {
+  background: rgb(255 255 255 / 94%);
+  border: 0;
+  border-radius: 0.7rem;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+  padding: 0.78rem 0.9rem;
+}
+
+.assistant-panel .primary-action {
+  border: 0;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.assistant-answer {
+  background: rgb(255 255 255 / 13%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.assistant-answer small {
+  color: #d7e4ff;
+  line-height: 1.55;
+}
+
+.workspace-grid {
+  margin-top: 1.25rem;
+}
+.transactions-panel {
+  background: linear-gradient(145deg, #fffdf8, #f7f8f0);
+}
+.transaction-grid {
+  margin-top: 1.1rem;
+}
+
+.transaction-grid > div {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.transaction-item {
+  background: white;
+  border: 1px solid #dfe7e1;
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+}
+
+.transaction-item h3 {
+  color: var(--navy);
+  font-size: 1rem;
+  margin: 0;
+}
+.transaction-item p {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  margin: 0;
+}
+.transaction-item > strong {
+  color: #195b48;
+  font-size: 1rem;
+}
+.transaction-item .secondary-action,
+.transaction-item .primary-action {
+  border: 0;
+  justify-self: start;
+  margin-top: 0.35rem;
+}
+
+.workflow-panel {
+  background: linear-gradient(145deg, #f9fbff, #edf3ff);
+}
+.workflow-list > article {
+  align-items: flex-start;
+}
+.workflow-list > article > span {
+  display: grid;
+  gap: 0.25rem;
+}
+.workflow-list button {
+  background: var(--navy);
+  color: white;
+}
+
+@media (max-width: 900px) {
+  .ecosystem-grid,
+  .workspace-grid,
+  .ecosystem-forms,
+  .transaction-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .assistant-panel form {
+    flex-direction: column;
+  }
+  .assistant-panel .primary-action {
+    width: 100%;
+  }
+  .compact-list article {
+    align-items: flex-start;
+  }
+  .compact-list button {
+    margin-inline-start: 0;
+  }
+}
