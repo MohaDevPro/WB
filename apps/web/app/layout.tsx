@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 
 import './globals.css';
 
+import { AuthProvider } from './auth-provider';
+
 export const metadata: Metadata = {
   description:
     'WB is an Arabic-first professional platform for learning, trusted connection, and meaningful opportunities.',
@@ -12,7 +14,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html dir="rtl" lang="ar">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

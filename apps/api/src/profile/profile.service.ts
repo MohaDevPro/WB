@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 import type { DatabaseClient } from '../database/database.types.js';
 import type { AuthenticatedIdentity } from '../identity/identity-context.js';
@@ -41,7 +41,21 @@ export class ProfileService {
       const profile = profileResult.rows[0];
 
       if (profile === undefined) {
-        throw new NotFoundException('A profile has not been created.');
+        const createdProfile = await client.query<ProfileRow>(
+          `
+            INSERT INTO profiles (user_id, display_name, biography, skills)
+            VALUES ($1, 'WB member', NULL, '[]'::jsonb)
+            RETURNING biography, display_name, 'ar'::wb_locale AS preferred_locale, skills
+          `,
+          [userId],
+        );
+        const created = createdProfile.rows[0];
+
+        if (created === undefined) {
+          throw new Error('Profile initialization did not return a row.');
+        }
+
+        return this.toPrivateProfile(created);
       }
 
       return this.toPrivateProfile(profile);

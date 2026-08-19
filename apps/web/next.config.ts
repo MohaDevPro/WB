@@ -19,9 +19,20 @@ const securityHeaders = [
   },
 ];
 
+const apiInternalOrigin = process.env.WB_API_INTERNAL_URL ?? 'http://127.0.0.1:3001/api';
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   poweredByHeader: false,
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      {
+        destination: `${apiInternalOrigin}/:path*`,
+        source: '/backend/:path*',
+      },
+    ];
+  },
   async headers() {
     return [
       {
