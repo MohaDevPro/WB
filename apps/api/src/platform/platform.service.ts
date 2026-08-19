@@ -618,6 +618,46 @@ export class PlatformService {
     });
   }
 
+  async createOpportunity(
+    identity: AuthenticatedIdentity,
+    body: InputRecord,
+  ): Promise<OpportunitySummary> {
+    const title = requiredString(body.title, 'title', 240);
+    const description = requiredString(body.description, 'description', 8_000);
+    const type =
+      body.type === 'role' || body.type === 'partnership' || body.type === 'mentorship'
+        ? body.type
+        : 'project';
+
+    return this.database.withTransaction(async (client) => {
+      const user = await this.requireUser(client, identity);
+      const created = await client.query<{
+        description: string;
+        id: string;
+        opportunity_type: string;
+        title: string;
+      }>(
+        `INSERT INTO opportunities (owner_user_id, title, description, opportunity_type)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, title, description, opportunity_type`,
+        [user.id, title, description, type],
+      );
+      const opportunity = created.rows[0];
+      if (opportunity === undefined) {
+        throw new Error('Opportunity creation did not return a resource.');
+      }
+      await this.audit(client, user.id, 'opportunity.created', 'opportunity', opportunity.id, {
+        type,
+      });
+      return Object.freeze({
+        description: opportunity.description,
+        id: opportunity.id,
+        title: opportunity.title,
+        type: opportunity.opportunity_type,
+      });
+    });
+  }
+
   async listOpportunities(): Promise<readonly OpportunitySummary[]> {
     await this.ensureSeedData();
     const rows = await this.database.query<{

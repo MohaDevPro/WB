@@ -51,3 +51,11 @@ Entering `product` in the discovery search returned four live persisted matches:
 ## Local persistence recovery and marketplace publication
 
 A stale development API process had been left holding the embedded PGlite data directory after an earlier forced service restart. The stale process was removed; its unclean local-data snapshot was preserved under `/tmp/wb-pglite-recovery-20260819`, and the ignored development store was recreated from migrations. The rebuilt API passed health checks. A synthetic authenticated provider then published the persistent `Arabic-first service design` listing at `SAR 2,750`, which appeared alongside the seeded advisory listing through the public marketplace endpoint.
+
+## Full authenticated lifecycle validation
+
+Using two synthetic local members, the live API successfully completed this end-to-end persisted lifecycle: provider service publication; requester service request; provider acceptance; requester preparation and confirmation of a `local-sandbox` SAR 4,250 payment; provider delivery; requester delivery acceptance; verified five-star review; organization creation with owner membership; expert profile update; a logged assistant guidance request; creation of an `opportunity_match` workflow; and its explicit requester approval. The final payment was `captured`, and the final workflow result explicitly stated that no external action had executed.
+
+## Opportunity and federation validation
+
+The isolated migrated validation API accepted creation of an owned `Federation Validation Circle` community, then accepted an HTTPS partner federation registration only as `pending` with `verified` trust level; no link was automatically activated. The same authenticated owner published a `partnership` opportunity, and the public opportunities endpoint returned it together with the seeded project listing.

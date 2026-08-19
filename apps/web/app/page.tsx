@@ -191,6 +191,17 @@ export default function HomePage() {
   });
   const [organizationDraft, setOrganizationDraft] = useState({ description: '', name: '' });
   const [serviceDraft, setServiceDraft] = useState({ description: '', priceSar: '', title: '' });
+  const [opportunityDraft, setOpportunityDraft] = useState<{
+    description: string;
+    title: string;
+    type: 'mentorship' | 'partnership' | 'project' | 'role';
+  }>({ description: '', title: '', type: 'partnership' });
+  const [communityDraft, setCommunityDraft] = useState({ name: '', summary: '' });
+  const [federationDraft, setFederationDraft] = useState({
+    communitySlug: '',
+    remoteBaseUrl: '',
+    remoteCommunityKey: '',
+  });
 
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
   const t = useCallback(
@@ -539,6 +550,81 @@ export default function HomePage() {
         reason instanceof Error
           ? reason.message
           : t('تعذر بدء المسار.', 'Could not start the learning path.'),
+      );
+    }
+  };
+
+  const createCommunity = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      const community = await api.createCommunity(token, communityDraft);
+      setCommunityDraft({ name: '', summary: '' });
+      setFederationDraft((current) => ({ ...current, communitySlug: community.slug }));
+      setNotice(
+        t(
+          'تم إنشاء مجتمعك وتسجيل ملكيتك.',
+          'Your community has been created and ownership recorded.',
+        ),
+      );
+      await loadHome();
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر إنشاء المجتمع.', 'Could not create the community.'),
+      );
+    }
+  };
+
+  const registerFederationLink = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      const link = await api.createFederationLink(token, federationDraft.communitySlug, {
+        remoteBaseUrl: federationDraft.remoteBaseUrl,
+        remoteCommunityKey: federationDraft.remoteCommunityKey,
+      });
+      setFederationDraft((current) => ({ ...current, remoteBaseUrl: '', remoteCommunityKey: '' }));
+      setNotice(
+        t(
+          `تم تسجيل رابط الاتحاد بحالة ${link.status}.`,
+          `Federation link registered with ${link.status} status.`,
+        ),
+      );
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر تسجيل رابط الاتحاد.', 'Could not register federation link.'),
+      );
+    }
+  };
+
+  const publishOpportunity = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const token = requireSession();
+    if (token === null) return;
+
+    try {
+      await api.createOpportunity(token, opportunityDraft);
+      setOpportunityDraft({ description: '', title: '', type: 'partnership' });
+      setNotice(
+        t(
+          'تم نشر الفرصة في النظام المهني.',
+          'Your opportunity has been published to the professional ecosystem.',
+        ),
+      );
+      await loadHome();
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : t('تعذر نشر الفرصة.', 'Could not publish the opportunity.'),
       );
     }
   };
@@ -1379,6 +1465,167 @@ export default function HomePage() {
                     </label>
                     <button className="primary-action" type="submit">
                       {t('نشر الخدمة', 'Publish service')}
+                    </button>
+                  </form>
+                  <form
+                    className="profile-form"
+                    onSubmit={(event) => void publishOpportunity(event)}
+                  >
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('فرص وشراكات', 'Opportunities and partnerships')}</p>
+                        <h2>{t('ابنِ اتصالاً جديداً', 'Build a new connection')}</h2>
+                      </div>
+                      <span className="live-form-label">{t('عام', 'Public')}</span>
+                    </div>
+                    <label>
+                      {t('عنوان الفرصة', 'Opportunity title')}
+                      <input
+                        onChange={(event) =>
+                          setOpportunityDraft((current) => ({
+                            ...current,
+                            title: event.target.value,
+                          }))
+                        }
+                        required
+                        value={opportunityDraft.title}
+                      />
+                    </label>
+                    <label>
+                      {t('الوصف', 'Description')}
+                      <textarea
+                        onChange={(event) =>
+                          setOpportunityDraft((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                        required
+                        rows={3}
+                        value={opportunityDraft.description}
+                      />
+                    </label>
+                    <label>
+                      {t('نوع الفرصة', 'Opportunity type')}
+                      <select
+                        onChange={(event) =>
+                          setOpportunityDraft((current) => ({
+                            ...current,
+                            type: event.target.value as
+                              'mentorship' | 'partnership' | 'project' | 'role',
+                          }))
+                        }
+                        value={opportunityDraft.type}
+                      >
+                        <option value="partnership">{t('شراكة', 'Partnership')}</option>
+                        <option value="project">{t('مشروع', 'Project')}</option>
+                        <option value="role">{t('دور', 'Role')}</option>
+                        <option value="mentorship">{t('إرشاد', 'Mentorship')}</option>
+                      </select>
+                    </label>
+                    <button className="primary-action" type="submit">
+                      {t('نشر الفرصة', 'Publish opportunity')}
+                    </button>
+                  </form>
+                  <form className="profile-form" onSubmit={(event) => void createCommunity(event)}>
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('مجتمع مملوك', 'Owned community')}</p>
+                        <h2>{t('افتح مساحة للحوار', 'Open a space for conversation')}</h2>
+                      </div>
+                      <span className="live-form-label">{t('ملكيتك', 'Your ownership')}</span>
+                    </div>
+                    <label>
+                      {t('اسم المجتمع', 'Community name')}
+                      <input
+                        onChange={(event) =>
+                          setCommunityDraft((current) => ({ ...current, name: event.target.value }))
+                        }
+                        required
+                        value={communityDraft.name}
+                      />
+                    </label>
+                    <label>
+                      {t('ملخص المجتمع', 'Community summary')}
+                      <textarea
+                        onChange={(event) =>
+                          setCommunityDraft((current) => ({
+                            ...current,
+                            summary: event.target.value,
+                          }))
+                        }
+                        required
+                        rows={3}
+                        value={communityDraft.summary}
+                      />
+                    </label>
+                    <button className="primary-action" type="submit">
+                      {t('إنشاء المجتمع', 'Create community')}
+                    </button>
+                  </form>
+                  <form
+                    className="profile-form"
+                    onSubmit={(event) => void registerFederationLink(event)}
+                  >
+                    <div className="panel-heading">
+                      <div>
+                        <p>{t('اتحاد مجتمعات محكوم', 'Governed community federation')}</p>
+                        <h2>{t('سجّل رابطاً موثوقاً', 'Register a trusted link')}</h2>
+                      </div>
+                      <span className="live-form-label">HTTPS</span>
+                    </div>
+                    <label>
+                      {t('مجتمعك المملوك', 'Your owned community')}
+                      <select
+                        onChange={(event) =>
+                          setFederationDraft((current) => ({
+                            ...current,
+                            communitySlug: event.target.value,
+                          }))
+                        }
+                        required
+                        value={federationDraft.communitySlug}
+                      >
+                        <option value="">
+                          {t('اختر مجتمعاً تملكه', 'Choose a community you own')}
+                        </option>
+                        {home.communities.map((community) => (
+                          <option key={community.id} value={community.slug}>
+                            {community.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {t('رابط المنصة الشريكة', 'Partner platform URL')}
+                      <input
+                        onChange={(event) =>
+                          setFederationDraft((current) => ({
+                            ...current,
+                            remoteBaseUrl: event.target.value,
+                          }))
+                        }
+                        placeholder="https://community.example"
+                        required
+                        type="url"
+                        value={federationDraft.remoteBaseUrl}
+                      />
+                    </label>
+                    <label>
+                      {t('معرّف المجتمع الشريك', 'Partner community key')}
+                      <input
+                        onChange={(event) =>
+                          setFederationDraft((current) => ({
+                            ...current,
+                            remoteCommunityKey: event.target.value,
+                          }))
+                        }
+                        required
+                        value={federationDraft.remoteCommunityKey}
+                      />
+                    </label>
+                    <button className="primary-action" type="submit">
+                      {t('تسجيل الرابط', 'Register link')}
                     </button>
                   </form>
                 </section>

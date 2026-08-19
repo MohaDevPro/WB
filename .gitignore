@@ -4,7 +4,7 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
-.wb-data/
+.wb-data*/
 
 # Local environment and secrets
 .env

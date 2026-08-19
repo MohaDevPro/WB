@@ -221,6 +221,15 @@ export const api = Object.freeze({
       method: 'POST',
       token,
     }),
+  createCommunity: (
+    token: string,
+    body: Readonly<{
+      name: string;
+      slug?: string;
+      summary: string;
+      visibility?: 'private' | 'public';
+    }>,
+  ) => request<Community>('/v1/communities', { body, method: 'POST', token }),
   createAiTask: (token: string, taskType: 'moderation' | 'recommendation' | 'summary') =>
     request<Readonly<{ id: string; status: string }>>('/v1/ai/tasks', {
       body: { taskType },
@@ -249,6 +258,14 @@ export const api = Object.freeze({
       visibility?: 'private' | 'public';
     }>,
   ) => request<LearningPath>('/v1/learning-paths', { body, method: 'POST', token }),
+  createOpportunity: (
+    token: string,
+    body: Readonly<{
+      description: string;
+      title: string;
+      type: 'mentorship' | 'partnership' | 'project' | 'role';
+    }>,
+  ) => request<Opportunity>('/v1/opportunities', { body, method: 'POST', token }),
   createOrganization: (
     token: string,
     body: Readonly<{ description?: string; name: string; slug?: string }>,

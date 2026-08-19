@@ -92,6 +92,12 @@ export class PlatformController {
     return this.platform.listOpportunities();
   }
 
+  @Post('opportunities')
+  @UseGuards(PlatformAuthenticationGuard)
+  async createOpportunity(@Body() body: unknown, @Req() request: RequestWithIdentity) {
+    return this.platform.createOpportunity(this.identity(request), asRecord(body));
+  }
+
   @Get('services')
   async getServices() {
     return this.platform.listServices();
