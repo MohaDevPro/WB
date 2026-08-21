@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PoolClient } from 'pg';
 import { query, transaction } from '../common/db';
 import { CommunitiesService } from '../communities/communities.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -196,34 +197,44 @@ export class ContentService {
   }
 
   async moderate(user: User, input: { reportId: string; targetType: TargetType; targetId: string; actionType: 'hide' | 'restore' | 'dismiss'; reason?: string }) {
+    await this.assertOpenReportTarget(input);
+    const target = await this.targetScope(input.targetType, input.targetId);
+    await this.authorizeModeration(user, target.communityId);
+    await transaction((client) => this.persistModeration(client, user.id, input));
+    await this.auditService.record(user.id, `moderation_${input.actionType}`, 'report', input.reportId);
+    return { success: true };
+  }
+
+  private async assertOpenReportTarget(input: { reportId: string; targetType: TargetType; targetId: string }) {
     const linked = await query(
       `SELECT 1 FROM moderation.report_queue
        WHERE id = $1 AND target_type = $2 AND target_id = $3 AND status = 'open'`,
       [input.reportId, input.targetType, input.targetId],
     );
     if (linked.rowCount !== 1) throw new NotFoundException('Open report target not found');
-    const target = await this.targetScope(input.targetType, input.targetId);
+  }
+
+  private async authorizeModeration(user: User, communityId: string) {
     if (user.platformRole !== 'platform_admin') {
-      await this.communities.requireCommunityAdmin(user, target.communityId);
+      await this.communities.requireCommunityAdmin(user, communityId);
     }
-    const table = input.targetType === 'post' ? 'content.posts' : 'content.comments';
-    const status = input.actionType === 'hide' ? 'hidden' : input.actionType === 'restore' ? 'visible' : null;
-    await transaction(async (client) => {
-      if (status) {
-        await client.query(`UPDATE ${table} SET status = $1, updated_at = now() WHERE id = $2`, [status, input.targetId]);
-      }
-      await client.query(
-        'UPDATE moderation.reports SET status = $1, updated_at = now() WHERE id = $2',
-        [input.actionType === 'dismiss' ? 'dismissed' : 'actioned', input.reportId],
-      );
-      await client.query(
-        `INSERT INTO moderation.actions (report_id, moderator_id, action_type, reason)
-         VALUES ($1, $2, $3, $4)`,
-        [input.reportId, user.id, input.actionType, input.reason ?? ''],
-      );
-    });
-    await this.auditService.record(user.id, `moderation_${input.actionType}`, 'report', input.reportId);
-    return { success: true };
+  }
+
+  private async persistModeration(client: PoolClient, moderatorId: string, input: { reportId: string; targetType: TargetType; targetId: string; actionType: 'hide' | 'restore' | 'dismiss'; reason?: string }) {
+    const status = moderationTargetStatus(input.actionType);
+    if (status) {
+      const table = moderationTargetTable(input.targetType);
+      await client.query(`UPDATE ${table} SET status = $1, updated_at = now() WHERE id = $2`, [status, input.targetId]);
+    }
+    await client.query(
+      'UPDATE moderation.reports SET status = $1, updated_at = now() WHERE id = $2',
+      [reportStatus(input.actionType), input.reportId],
+    );
+    await client.query(
+      `INSERT INTO moderation.actions (report_id, moderator_id, action_type, reason)
+       VALUES ($1, $2, $3, $4)`,
+      [input.reportId, moderatorId, input.actionType, input.reason ?? ''],
+    );
   }
 
   private async targetScope(targetType: TargetType, targetId: string) {
@@ -261,4 +272,18 @@ export class ContentService {
     return result.rows[0];
   }
 
+}
+
+function moderationTargetTable(targetType: TargetType) {
+  return targetType === 'post' ? 'content.posts' : 'content.comments';
+}
+
+function moderationTargetStatus(actionType: 'hide' | 'restore' | 'dismiss') {
+  if (actionType === 'hide') return 'hidden';
+  if (actionType === 'restore') return 'visible';
+  return null;
+}
+
+function reportStatus(actionType: 'hide' | 'restore' | 'dismiss') {
+  return actionType === 'dismiss' ? 'dismissed' : 'actioned';
 }
