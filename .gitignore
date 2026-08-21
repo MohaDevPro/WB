@@ -5,6 +5,8 @@ dist/
 .env.*
 !.env.example
 coverage/
+reports/mutation/
+reports/ui/
 *.log
 .DS_Store
 .impeccable/review/

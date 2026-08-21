@@ -3,6 +3,7 @@ import { query, transaction } from '../common/db';
 import { CommunitiesService } from '../communities/communities.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../system/audit.service';
+import { contentBody } from '../common/v0-rules';
 
 type User = { id: string; platformRole: string; emailVerifiedAt: string | null };
 type ScopeType = 'community' | 'group';
@@ -35,13 +36,14 @@ export class ContentService {
   }
 
   async create(user: User, scopeType: ScopeType, scopeId: string, body: string) {
+    const normalizedBody = contentBody(body);
     if (!(await this.communities.canAccessScope(user, scopeType, scopeId))) {
       throw new ForbiddenException('You cannot post here');
     }
     const post = await transaction(async (client) => {
       const result = await client.query<Record<string, unknown>>(
         'INSERT INTO content.posts (author_id, body) VALUES ($1, $2) RETURNING *',
-        [user.id, body.trim()],
+        [user.id, normalizedBody],
       );
       if (scopeType === 'community') {
         await client.query(
@@ -61,13 +63,14 @@ export class ContentService {
   }
 
   async update(user: User, postId: string, body: string) {
+    const normalizedBody = contentBody(body);
     const post = await this.post(postId);
     if (post.author_id !== user.id && user.platformRole !== 'platform_admin') {
       throw new ForbiddenException('Only the author can edit this post');
     }
     const result = await query<Record<string, unknown>>(
       'UPDATE content.posts SET body = $1, updated_at = now() WHERE id = $2 RETURNING *',
-      [body.trim(), postId],
+      [normalizedBody, postId],
     );
     return result.rows[0];
   }
@@ -100,6 +103,7 @@ export class ContentService {
   }
 
   async comment(user: User, postId: string, body: string) {
+    const normalizedBody = contentBody(body);
     const post = await this.post(postId);
     const scope = await this.targetScope('post', postId);
     if (!(await this.communities.canAccessScope(user, scope.scopeType, scope.scopeId))) {
@@ -107,7 +111,7 @@ export class ContentService {
     }
     const result = await query<Record<string, unknown>>(
       'INSERT INTO content.comments (post_id, author_id, body) VALUES ($1, $2, $3) RETURNING *',
-      [postId, user.id, body.trim()],
+      [postId, user.id, normalizedBody],
     );
     if (post.author_id !== user.id) {
       await this.notifications.notifyPost(post.author_id, user.id, postId);
@@ -141,6 +145,7 @@ export class ContentService {
   }
 
   async report(user: User, input: { targetType: TargetType; targetId: string; reason: string }) {
+    const reason = contentBody(input.reason);
     const target = await this.targetScope(input.targetType, input.targetId);
     if (!(await this.communities.canAccessScope(user, target.scopeType, target.scopeId))) {
       throw new ForbiddenException('You cannot report content outside your access');
@@ -149,7 +154,7 @@ export class ContentService {
       const created = await client.query<{ id: string }>(
         `INSERT INTO moderation.reports (reporter_id, community_id, reason)
          VALUES ($1, $2, $3) RETURNING id`,
-        [user.id, target.communityId, input.reason.trim()],
+        [user.id, target.communityId, reason],
       );
       if (input.targetType === 'post') {
         await client.query(
