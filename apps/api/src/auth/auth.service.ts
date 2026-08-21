@@ -28,35 +28,44 @@ export class AuthService {
   private readonly resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
   async register(input: { email: string; password: string; phoneNumber: string; displayName: string }) {
-    const email = normalizeEmail(input.email);
-    const phoneNumber = input.phoneNumber.trim();
-    const displayName = input.displayName.trim();
-    if (!isValidPassword(input.password)) throw new BadRequestException('Password must be at least 10 characters');
-    if (!isValidPhone(phoneNumber)) throw new BadRequestException('Phone number must use E.164 format');
-    if (!displayName) throw new BadRequestException('Display name is required');
+    const details = validateRegistration(input);
     const passwordHash = await bcrypt.hash(input.password, 12);
-    const user = await transaction(async (client) => {
+    const user = await this.createUser(details, passwordHash);
+    await this.issueEmailVerification(user, details.email);
+    return { message: 'Account created. Check your email to activate it.' };
+  }
+
+  private async createUser(details: RegistrationDetails, passwordHash: string) {
+    return transaction(async (client) => {
       try {
         const result = await client.query<{ id: string }>(
           `INSERT INTO auth.users (email, password_hash)
            VALUES ($1, $2) RETURNING id`,
-          [email, passwordHash],
+          [details.email, passwordHash],
         );
         const userId = result.rows[0].id;
-        await client.query('INSERT INTO auth.user_phones (user_id, phone_e164) VALUES ($1, $2)', [userId, phoneNumber]);
-        await client.query('INSERT INTO profile.profiles (user_id, display_name) VALUES ($1, $2)', [userId, displayName]);
+        await client.query('INSERT INTO auth.user_phones (user_id, phone_e164) VALUES ($1, $2)', [userId, details.phoneNumber]);
+        await client.query('INSERT INTO profile.profiles (user_id, display_name) VALUES ($1, $2)', [userId, details.displayName]);
         return userId;
       } catch (error: any) {
         if (error.code === '23505') throw new BadRequestException('An account with this email or phone already exists');
         throw error;
       }
     });
-    await this.issueEmailVerification(user, email);
-    return { message: 'Account created. Check your email to activate it.' };
   }
 
   async login(emailInput: string, password: string) {
-    const email = normalizeEmail(emailInput);
+    const row = await this.findLoginUser(normalizeEmail(emailInput));
+    if (!(await credentialsMatch(row, password))) {
+      await this.recordLoginFailure(row);
+      throw new UnauthorizedException('Invalid email or password');
+    }
+    assertActiveAccount(row);
+    await this.recordLoginSuccess(String(row.id));
+    return { user: dbUser(row) as PublicUser, token: await this.createSession(String(row.id)) };
+  }
+
+  private async findLoginUser(email: string) {
     const result = await query<Record<string, unknown>>(
       `SELECT u.*, ph.phone_e164, p.display_name
        FROM auth.users u
@@ -65,15 +74,15 @@ export class AuthService {
        WHERE u.email = $1 LIMIT 1`,
       [email],
     );
-    const row = result.rows[0];
-    const valid = row ? await bcrypt.compare(password, String(row.password_hash)) : false;
-    if (!row || !valid) {
-      await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [row?.id ?? null, 'login_failed']);
-      throw new UnauthorizedException('Invalid email or password');
-    }
-    if (row.status !== 'active') throw new UnauthorizedException('Account is not active');
-    await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [row.id, 'login_succeeded']);
-    return { user: dbUser(row) as PublicUser, token: await this.createSession(String(row.id)) };
+    return result.rows[0];
+  }
+
+  private async recordLoginFailure(row: Record<string, unknown> | undefined) {
+    await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [row?.id ?? null, 'login_failed']);
+  }
+
+  private async recordLoginSuccess(userId: string) {
+    await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [userId, 'login_succeeded']);
   }
 
   async createSession(userId: string) {
@@ -135,32 +144,50 @@ export class AuthService {
   }
 
   async issueEmailVerification(userId: string, email: string) {
+    const token = await this.createEmailVerificationToken(userId);
+    const url = verificationUrl(token);
+    this.logDevelopmentLink(url);
+    await this.sendEmail(email, 'Activate your WB account', `<p>Activate your account: <a href="${url}">Verify email</a></p>`);
+    return { message: 'Verification email sent' };
+  }
+
+  private async createEmailVerificationToken(userId: string) {
     await query('UPDATE auth.email_verification_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [userId]);
     const token = randomBytes(32).toString('base64url');
     await query(
       `INSERT INTO auth.email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')`,
       [userId, hashToken(token)],
     );
-    const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/verify-email?token=${encodeURIComponent(token)}`;
+    return token;
+  }
+
+  private logDevelopmentLink(url: string) {
     if (!this.resend && process.env.NODE_ENV !== 'production' && process.env.EMAIL_MODE === 'console') console.info(`[mail:development:url] ${url}`);
-    await this.sendEmail(email, 'Activate your WB account', `<p>Activate your account: <a href="${url}">Verify email</a></p>`);
-    return { message: 'Verification email sent' };
   }
 
   async forgotPassword(emailInput: string) {
     const email = normalizeEmail(emailInput);
+    const user = await this.findUserForReset(email);
+    if (!user) return genericResetResponse();
+    await this.sendPasswordResetEmail(user.id, email);
+    return genericResetResponse();
+  }
+
+  private async findUserForReset(email: string) {
     const result = await query<{ id: string }>('SELECT id FROM auth.users WHERE email = $1 LIMIT 1', [email]);
-    if (!result.rows[0]) return { message: 'If the account exists, a reset email will be sent.' };
+    return result.rows[0];
+  }
+
+  private async sendPasswordResetEmail(userId: string, email: string) {
     const token = randomBytes(32).toString('base64url');
-    await query('UPDATE auth.password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [result.rows[0].id]);
+    await query('UPDATE auth.password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [userId]);
     await query(
       `INSERT INTO auth.password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`,
-      [result.rows[0].id, hashToken(token)],
+      [userId, hashToken(token)],
     );
-    const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(token)}`;
-    if (!this.resend && process.env.NODE_ENV !== 'production' && process.env.EMAIL_MODE === 'console') console.info(`[mail:development:url] ${url}`);
+    const url = resetPasswordUrl(token);
+    this.logDevelopmentLink(url);
     await this.sendEmail(email, 'Reset your WB password', `<p>Reset your password: <a href="${url}">Reset password</a></p>`);
-    return { message: 'If the account exists, a reset email will be sent.' };
   }
 
   async resetPassword(token: string, password: string) {
@@ -190,4 +217,40 @@ export class AuthService {
     if (process.env.NODE_ENV === 'production') throw new Error('Email provider is not configured');
     console.info(`[mail:development] ${subject} -> ${to}`);
   }
+}
+
+type RegistrationDetails = {
+  email: string;
+  phoneNumber: string;
+  displayName: string;
+};
+
+function validateRegistration(input: { email: string; password: string; phoneNumber: string; displayName: string }): RegistrationDetails {
+  const email = normalizeEmail(input.email);
+  const phoneNumber = input.phoneNumber.trim();
+  const displayName = input.displayName.trim();
+  if (!isValidPassword(input.password)) throw new BadRequestException('Password must be at least 10 characters');
+  if (!isValidPhone(phoneNumber)) throw new BadRequestException('Phone number must use E.164 format');
+  if (!displayName) throw new BadRequestException('Display name is required');
+  return { email, phoneNumber, displayName };
+}
+
+async function credentialsMatch(row: Record<string, unknown> | undefined, password: string) {
+  return row ? bcrypt.compare(password, String(row.password_hash)) : false;
+}
+
+function assertActiveAccount(row: Record<string, unknown>) {
+  if (row.status !== 'active') throw new UnauthorizedException('Account is not active');
+}
+
+function genericResetResponse() {
+  return { message: 'If the account exists, a reset email will be sent.' };
+}
+
+function verificationUrl(token: string) {
+  return `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/verify-email?token=${encodeURIComponent(token)}`;
+}
+
+function resetPasswordUrl(token: string) {
+  return `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(token)}`;
 }

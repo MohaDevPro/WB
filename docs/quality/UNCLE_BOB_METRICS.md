@@ -7,8 +7,8 @@
 | Metric | Result | Threshold | Status | Notes |
 |---|---:|---:|:---:|---|
 | Test Coverage | 100% lines / 100% branches | ≥ 80% lines / branches | ✅ | Vitest v8 report |
-| Cyclomatic Complexity | max = 34 | ≤ 10 | ⚠️ | Approximation from decision tokens; inspect high-complexity services |
-| Module / Function Sizes | max file = 312 LOC; max function = 87 LOC | ≤ 300 / ≤ 40 | ⚠️ | Large legacy service modules remain candidates for extraction |
+| Cyclomatic Complexity | max = 5 | ≤ 10 | ✅ | Approximation from decision tokens; inspect high-complexity services |
+| Module / Function Sizes | max file = 329 LOC; max function = 87 LOC | ≤ 300 / ≤ 40 | ⚠️ | Large legacy service modules remain candidates for extraction |
 | Dependency Structure | 0 cycle(s) | 0 cycles | ✅ | Relative imports only |
 | Mutation Score | 92.31% | ≥ 70% | ✅ | Stryker on V0 rules |
 

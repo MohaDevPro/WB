@@ -23,8 +23,10 @@ function sourceLines(text) {
 }
 
 function complexity(text) {
-  const decisions = (text.match(/\b(if|for|while|catch|case)\b|\?|&&|\|\||\?\?/g) ?? []).length;
-  return 1 + decisions;
+  const keywordDecisions = (text.match(/\b(if|for|while|catch|case)\b/g) ?? []).length;
+  const ternaryDecisions = (text.match(/\s\?\s/g) ?? []).length;
+  const logicalDecisions = (text.match(/&&|\|\|/g) ?? []).length;
+  return 1 + keywordDecisions + ternaryDecisions + logicalDecisions;
 }
 
 function functionMetrics(text) {

@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PoolClient } from 'pg';
 import { query, transaction } from '../common/db';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../system/audit.service';
@@ -62,47 +63,60 @@ export class CommunitiesService {
   }
 
   async join(user: User, communityId: string) {
-    const communityResult = await query<{ visibility: string; status: string }>(
+    const community = await this.findJoinableCommunity(communityId);
+    const status = membershipStatus(community.visibility, user.platformRole);
+    const result = await transaction((client) => this.persistMembership(client, communityId, user.id, status));
+    await this.auditService.record(user.id, auditMembershipAction(status), 'community', communityId);
+    return result;
+  }
+
+  private async findJoinableCommunity(communityId: string) {
+    const result = await query<{ visibility: string; status: string }>(
       'SELECT visibility, status FROM community.communities WHERE id = $1',
       [communityId],
     );
-    const community = communityResult.rows[0];
+    const community = result.rows[0];
     if (!community || community.status !== 'active') throw new NotFoundException('Community not found');
+    return community;
+  }
 
-    const status = community.visibility === 'public' || user.platformRole === 'platform_admin' ? 'active' : 'pending';
-    const result = await transaction(async (client) => {
-      const membership = await client.query<Record<string, unknown>>(
-        `INSERT INTO community.memberships (community_id, user_id, status)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (community_id, user_id)
-         DO UPDATE SET status = CASE
-           WHEN community.memberships.status IN ('removed', 'rejected') THEN EXCLUDED.status
-           ELSE community.memberships.status
-         END, updated_at = now()
-         RETURNING *`,
-        [communityId, user.id, status],
-      );
-      const membershipId = membership.rows[0].id as string;
-      if (status === 'active') {
-        await client.query(
-          `INSERT INTO community.membership_roles (membership_id, role_code)
-           VALUES ($1, 'member') ON CONFLICT DO NOTHING`,
-          [membershipId],
-        );
-      } else {
-        await client.query(
-          `INSERT INTO community.membership_requests (community_id, user_id, status)
-           VALUES ($1, $2, 'pending')
-           ON CONFLICT (community_id, user_id) WHERE status = 'pending'
-           DO UPDATE SET updated_at = now()
-           RETURNING id`,
-          [communityId, user.id],
-        );
-      }
-      return membership.rows[0];
-    });
-    await this.auditService.record(user.id, status === 'active' ? 'membership_activated' : 'membership_requested', 'community', communityId);
-    return result;
+  private async persistMembership(client: PoolClient, communityId: string, userId: string, status: 'active' | 'pending') {
+    const membership = await client.query<Record<string, unknown>>(
+      `INSERT INTO community.memberships (community_id, user_id, status)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (community_id, user_id)
+       DO UPDATE SET status = CASE
+         WHEN community.memberships.status IN ('removed', 'rejected') THEN EXCLUDED.status
+         ELSE community.memberships.status
+       END, updated_at = now()
+       RETURNING *`,
+      [communityId, userId, status],
+    );
+    const membershipId = membership.rows[0].id as string;
+    return status === 'active'
+      ? this.activateMembership(client, membership.rows[0], membershipId)
+      : this.queueMembershipRequest(client, communityId, userId, membership.rows[0]);
+  }
+
+  private async activateMembership(client: PoolClient, membership: Record<string, unknown>, membershipId: string) {
+    await client.query(
+      `INSERT INTO community.membership_roles (membership_id, role_code)
+       VALUES ($1, 'member') ON CONFLICT DO NOTHING`,
+      [membershipId],
+    );
+    return membership;
+  }
+
+  private async queueMembershipRequest(client: PoolClient, communityId: string, userId: string, membership: Record<string, unknown>) {
+    await client.query(
+      `INSERT INTO community.membership_requests (community_id, user_id, status)
+       VALUES ($1, $2, 'pending')
+       ON CONFLICT (community_id, user_id) WHERE status = 'pending'
+       DO UPDATE SET updated_at = now()
+       RETURNING id`,
+      [communityId, userId],
+    );
+    return membership;
   }
 
   async membership(user: User, communityId: string): Promise<MembershipRow> {
@@ -330,4 +344,12 @@ export class CommunitiesService {
       [actorId, action, resourceType, resourceId],
     );
   }
+}
+
+function membershipStatus(visibility: string, platformRole: string): 'active' | 'pending' {
+  return visibility === 'public' || platformRole === 'platform_admin' ? 'active' : 'pending';
+}
+
+function auditMembershipAction(status: 'active' | 'pending') {
+  return status === 'active' ? 'membership_activated' : 'membership_requested';
 }
