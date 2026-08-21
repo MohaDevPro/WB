@@ -1,0 +1,326 @@
+erDiagram
+    auth_email_verification_tokens {
+        UUID id PK
+        UUID user_id FK
+        CHAR_64_ token_hash UK
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ used_at
+        TIMESTAMPTZ created_at
+    }
+    auth_identities {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_40_ provider
+        VARCHAR_255_ provider_subject
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    auth_mfa_challenges {
+        UUID id PK
+        UUID factor_id FK
+        CHAR_64_ challenge_hash UK
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ used_at
+        TIMESTAMPTZ created_at
+    }
+    auth_mfa_factors {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_40_ factor_type
+        TEXT secret_reference
+        TIMESTAMPTZ verified_at
+        TIMESTAMPTZ disabled_at
+        TIMESTAMPTZ created_at
+    }
+    auth_password_reset_tokens {
+        UUID id PK
+        UUID user_id FK
+        CHAR_64_ token_hash UK
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ used_at
+        TIMESTAMPTZ created_at
+    }
+    auth_security_events {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_80_ event_type
+        CHAR_64_ ip_hash
+        CHAR_64_ user_agent_hash
+        JSONB metadata
+        TIMESTAMPTZ created_at
+    }
+    auth_sessions {
+        UUID id PK
+        UUID user_id FK
+        CHAR_64_ token_hash UK
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ revoked_at
+        TIMESTAMPTZ created_at
+    }
+    auth_user_phones {
+        UUID user_id PK
+        VARCHAR_16_ phone_e164 UK
+        TIMESTAMPTZ verified_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    auth_users {
+        UUID id PK
+        CITEXT email UK
+        TEXT password_hash
+        VARCHAR_40_ platform_role
+        VARCHAR_30_ status
+        TIMESTAMPTZ email_verified_at
+        TIMESTAMPTZ email_changed_at
+        TIMESTAMPTZ deleted_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_communities {
+        UUID id PK
+        VARCHAR_160_ name
+        CITEXT slug UK
+        TEXT description
+        VARCHAR_20_ visibility
+        VARCHAR_20_ status
+        UUID created_by FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_community_creation_requests {
+        UUID id PK
+        UUID requested_by FK
+        VARCHAR_160_ name
+        CITEXT slug
+        TEXT description
+        VARCHAR_25_ status
+        UUID reviewed_by FK
+        TIMESTAMPTZ reviewed_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_community_settings {
+        UUID community_id PK
+        VARCHAR_30_ join_policy
+        VARCHAR_30_ content_policy
+        VARCHAR_30_ default_visibility
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_group_membership_roles {
+        UUID group_membership_id FK
+        VARCHAR_40_ role_code
+        UUID assigned_by FK
+        TIMESTAMPTZ created_at
+    }
+    community_group_memberships {
+        UUID id PK
+        UUID group_id FK
+        UUID user_id FK
+        VARCHAR_25_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_groups {
+        UUID id PK
+        UUID community_id FK
+        VARCHAR_160_ name
+        TEXT description
+        VARCHAR_20_ status
+        UUID created_by FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_invitations {
+        UUID id PK
+        UUID community_id FK
+        UUID invited_user_id FK
+        CITEXT invited_email
+        CHAR_64_ token_hash UK
+        UUID invited_by FK
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ accepted_at
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+    }
+    community_membership_requests {
+        UUID id PK
+        UUID community_id FK
+        UUID user_id FK
+        VARCHAR_25_ status
+        VARCHAR_500_ reason
+        UUID reviewed_by FK
+        TIMESTAMPTZ reviewed_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_membership_roles {
+        UUID membership_id FK
+        VARCHAR_40_ role_code
+        UUID assigned_by FK
+        TIMESTAMPTZ created_at
+    }
+    community_memberships {
+        UUID id PK
+        UUID community_id FK
+        UUID user_id FK
+        VARCHAR_25_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    community_rules {
+        UUID id PK
+        UUID community_id FK
+        VARCHAR_180_ title
+        TEXT body
+        INTEGER position
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_certificate_visibility {
+        UUID certificate_id PK
+        VARCHAR_30_ visibility
+        TIMESTAMPTZ updated_at
+    }
+    profile_certificates {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_180_ issuer_name
+        VARCHAR_180_ certificate_name
+        TEXT credential_url
+        DATE issued_on
+        DATE expires_on
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_education_visibility {
+        UUID education_id PK
+        VARCHAR_30_ visibility
+        TIMESTAMPTZ updated_at
+    }
+    profile_educations {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_180_ institution_name
+        VARCHAR_180_ degree
+        VARCHAR_180_ field_of_study
+        TEXT description
+        DATE starts_on
+        DATE ends_on
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_experience_visibility {
+        UUID experience_id PK
+        VARCHAR_30_ visibility
+        TIMESTAMPTZ updated_at
+    }
+    profile_experiences {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_180_ organization_name
+        VARCHAR_180_ title
+        TEXT description
+        DATE starts_on
+        DATE ends_on
+        BOOLEAN is_current
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_profile_visibility {
+        UUID user_id PK
+        VARCHAR_30_ visibility
+        TIMESTAMPTZ updated_at
+    }
+    profile_profiles {
+        UUID user_id PK
+        VARCHAR_120_ display_name
+        TEXT avatar_object_key
+        VARCHAR_500_ bio
+        VARCHAR_20_ locale
+        VARCHAR_80_ timezone
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_services {
+        UUID id PK
+        VARCHAR_160_ name UK
+        CITEXT slug UK
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_skills {
+        UUID id PK
+        VARCHAR_160_ name UK
+        CITEXT slug UK
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_user_services {
+        UUID id PK
+        UUID user_id FK
+        UUID service_id FK
+        VARCHAR_500_ summary
+        VARCHAR_30_ visibility
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    profile_user_skills {
+        UUID user_id FK
+        UUID skill_id FK
+        VARCHAR_30_ proficiency
+        NUMERIC_4_1_ years_experience
+        VARCHAR_30_ visibility
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    public_app_metadata {
+        VARCHAR_160_ key PK
+        TEXT value
+        TIMESTAMPTZ updated_at
+    }
+    auth_users ||--o{ auth_email_verification_tokens : "user_id -> id"
+    auth_users ||--o{ auth_identities : "user_id -> id"
+    auth_mfa_factors ||--o{ auth_mfa_challenges : "factor_id -> id"
+    auth_users ||--o{ auth_mfa_factors : "user_id -> id"
+    auth_users ||--o{ auth_password_reset_tokens : "user_id -> id"
+    auth_users ||--o{ auth_security_events : "user_id -> id"
+    auth_users ||--o{ auth_sessions : "user_id -> id"
+    auth_users ||--o{ auth_user_phones : "user_id -> id"
+    auth_users ||--o{ community_communities : "created_by -> id"
+    auth_users ||--o{ community_community_creation_requests : "requested_by -> id"
+    auth_users ||--o{ community_community_creation_requests : "reviewed_by -> id"
+    community_communities ||--o{ community_community_settings : "community_id -> id"
+    community_group_memberships ||--o{ community_group_membership_roles : "group_membership_id -> id"
+    auth_users ||--o{ community_group_membership_roles : "assigned_by -> id"
+    community_groups ||--o{ community_group_memberships : "group_id -> id"
+    auth_users ||--o{ community_group_memberships : "user_id -> id"
+    community_communities ||--o{ community_groups : "community_id -> id"
+    auth_users ||--o{ community_groups : "created_by -> id"
+    community_communities ||--o{ community_invitations : "community_id -> id"
+    auth_users ||--o{ community_invitations : "invited_user_id -> id"
+    auth_users ||--o{ community_invitations : "invited_by -> id"
+    community_communities ||--o{ community_membership_requests : "community_id -> id"
+    auth_users ||--o{ community_membership_requests : "user_id -> id"
+    auth_users ||--o{ community_membership_requests : "reviewed_by -> id"
+    community_memberships ||--o{ community_membership_roles : "membership_id -> id"
+    auth_users ||--o{ community_membership_roles : "assigned_by -> id"
+    community_communities ||--o{ community_memberships : "community_id -> id"
+    auth_users ||--o{ community_memberships : "user_id -> id"
+    community_communities ||--o{ community_rules : "community_id -> id"
+    profile_certificates ||--o{ profile_certificate_visibility : "certificate_id -> id"
+    auth_users ||--o{ profile_certificates : "user_id -> id"
+    profile_educations ||--o{ profile_education_visibility : "education_id -> id"
+    auth_users ||--o{ profile_educations : "user_id -> id"
+    profile_experiences ||--o{ profile_experience_visibility : "experience_id -> id"
+    auth_users ||--o{ profile_experiences : "user_id -> id"
+    auth_users ||--o{ profile_profile_visibility : "user_id -> id"
+    auth_users ||--o{ profile_profiles : "user_id -> id"
+    auth_users ||--o{ profile_user_services : "user_id -> id"
+    profile_services ||--o{ profile_user_services : "service_id -> id"
+    auth_users ||--o{ profile_user_skills : "user_id -> id"
+    profile_skills ||--o{ profile_user_skills : "skill_id -> id"

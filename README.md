@@ -1,4 +1,4 @@
-# 🌟 WB — AI-Native Community & Professional Ecosystem
+# WB — Community Core V0 + V1 Roadmap
 
 <div align="center">
 
@@ -378,29 +378,49 @@ git clone https://github.com/ma1amin/WB.git
 cd WB
 
 # Install dependencies
-npm install
+pnpm install
 
 # Set up environment variables
 cp .env.example .env
 
-# Run database migrations
-npm run db:migrate
+# Start local infrastructure
+# Requires Docker for PostgreSQL, Redis and MinIO
+docker compose up -d postgres redis minio
 
-# Start development server
-npm run dev
+# Run database migrations and seed
+pnpm db:migrate
+pnpm db:seed
+
+# Start Web and API
+pnpm dev
 ```
 
 ### Development
 ```bash
-# Run tests
-npm test
-
-# Build for production
-npm run build
-
-# Start production server
-npm run start
+# Run checks, tests and production builds
+pnpm check
+pnpm test
+pnpm build
 ```
+
+## V0 Implementation
+
+The repository now contains a runnable V0 focused on email/password Auth, mandatory but unverified phone input, Resend email verification, sessions, a public Community, a closed Community with join requests, admin-created Groups, text Feed posts, one-level comments, one `like` reaction, basic moderation, internal notifications, and one-off public/private Zoom Events.
+
+### Documentation
+
+- [V0 Implementation Plan](V0_IMPLEMENTATION_PLAN.md)
+- [V1 Implementation Plan](V1_IMPLEMENTATION_PLAN.md)
+- [Repository Structure](REPOSITORY_STRUCTURE.md)
+- [API Architecture](API_ARCHITECTURE.md)
+- [Canonical PostgreSQL ERD](docs/database/WB_FULL_ERD.md)
+- [ERD Architecture Review](docs/database/WB_ERD_ARCHITECTURE_REVIEW.md)
+
+The API runs on `http://localhost:4000`, Swagger is available at `http://localhost:4000/docs`, and the Web app runs on `http://localhost:3000`. The default local seed account is `admin@wb.local` with `ChangeMe123!`; change it before using any shared environment.
+
+### Database Foundation
+
+WB uses one PostgreSQL database per environment with a dedicated PostgreSQL schema for each Modular Monolith Module. The canonical ERD is generated from `database/migrations/002_modular_schemas.sql`, so the table dictionary, Foreign Key matrix, Mermaid sources, and rendered PNG diagrams are reviewed from the executable Database Foundation. V0 activates only the minimum Auth, Community, Content, Events, Notifications, and Audit paths; future Verification, Directory, Trust, Channel policy, recurrence, and outbox tables exist from the beginning without forcing their endpoints into V0.
 
 ---
 
