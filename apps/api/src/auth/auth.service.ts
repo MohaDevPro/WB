@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { Resend } from 'resend';
 import { dbUser, query, transaction } from '../common/db';
+import { isValidPassword, isValidPhone } from '../common/v0-rules';
 
 export type PublicUser = {
   id: string;
@@ -30,8 +31,8 @@ export class AuthService {
     const email = normalizeEmail(input.email);
     const phoneNumber = input.phoneNumber.trim();
     const displayName = input.displayName.trim();
-    if (input.password.length < 10) throw new BadRequestException('Password must be at least 10 characters');
-    if (!/^\+[1-9][0-9]{7,14}$/.test(phoneNumber)) throw new BadRequestException('Phone number must use E.164 format');
+    if (!isValidPassword(input.password)) throw new BadRequestException('Password must be at least 10 characters');
+    if (!isValidPhone(phoneNumber)) throw new BadRequestException('Phone number must use E.164 format');
     if (!displayName) throw new BadRequestException('Display name is required');
     const passwordHash = await bcrypt.hash(input.password, 12);
     const user = await transaction(async (client) => {
@@ -163,7 +164,7 @@ export class AuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    if (password.length < 10) throw new BadRequestException('Password must be at least 10 characters');
+    if (!isValidPassword(password)) throw new BadRequestException('Password must be at least 10 characters');
     const hash = await bcrypt.hash(password, 12);
     const result = await transaction(async (client) => {
       const found = await client.query<{ id: string; user_id: string }>(

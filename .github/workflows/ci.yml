@@ -1,26 +1,184 @@
-name: V0 CI
+name: WB Quality CI
 
 on:
   push:
     branches: [master, main]
   pull_request:
 
+concurrency:
+  group: wb-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   validate:
+    name: Typecheck, tests, build, and UI quality
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 11.21.0
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check
-      - run: pnpm test
-      - run: pnpm build
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck API and Web
+        run: pnpm check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Coverage and hard coverage gate
+        run: pnpm test:coverage
+
+      - name: Impeccable UI quality gate
+        run: node scripts/ui-quality-check.mjs
+
+      - name: Build API and Web
+        run: pnpm build
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Upload quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wb-quality-reports
+          path: |
+            apps/api/coverage/
+            docs/quality/UNCLE_BOB_METRICS.md
+            reports/ui/impeccable-detector.json
+          if-no-files-found: warn
+
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: validate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Coverage for metrics gate
+        run: pnpm test:coverage
+
+      - name: Run Stryker mutation gate
+        run: pnpm test:mutation
+
+      - name: Uncle Bob metrics and hard gates
+        run: pnpm quality:metrics
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wb-mutation-report
+          path: reports/mutation/
+          if-no-files-found: warn
+
+  database-smoke:
+    name: PostgreSQL migration smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wb
+          POSTGRES_PASSWORD: wb
+          POSTGRES_DB: wb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wb -d wb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply clean migrations
+        env:
+          DATABASE_URL: postgres://wb:wb@localhost:5432/wb
+        run: pnpm db:migrate
+
+      - name: Seed V0 data
+        env:
+          DATABASE_URL: postgres://wb:wb@localhost:5432/wb
+          EMAIL_MODE: console
+        run: pnpm db:seed
+
+      - name: Verify schema counts and Foreign Keys
+        env:
+          PGPASSWORD: wb
+        run: |
+          test "$(psql postgres://wb:wb@localhost:5432/wb -Atc "select count(*) from pg_constraint where contype = 'f'")" -eq 167
+          test "$(psql postgres://wb:wb@localhost:5432/wb -Atc "select count(*) from public.schema_migrations")" -eq 2
+
+  security:
+    name: Dependency security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high

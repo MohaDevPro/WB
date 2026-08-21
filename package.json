@@ -8,10 +8,19 @@
     "build": "pnpm -r build",
     "check": "pnpm -r check",
     "test": "pnpm --filter @wb/api test",
+    "test:coverage": "pnpm --filter @wb/api test:coverage",
+    "test:mutation": "pnpm exec stryker run",
+    "quality:metrics": "node scripts/uncle-bob-metrics.mjs --strict",
+    "quality": "pnpm check && pnpm test:coverage && pnpm test:mutation && pnpm quality:metrics",
     "db:migrate": "pnpm --filter @wb/api db:migrate",
     "db:seed": "pnpm --filter @wb/api db:seed"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/typescript-checker": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@vitest/coverage-v8": "^3.2.7",
+    "concurrently": "^9.1.2",
+    "madge": "^8.0.0"
   }
 }
