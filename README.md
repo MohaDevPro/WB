@@ -413,8 +413,14 @@ The repository now contains a runnable V0 focused on email/password Auth, mandat
 - [V1 Implementation Plan](V1_IMPLEMENTATION_PLAN.md)
 - [Repository Structure](REPOSITORY_STRUCTURE.md)
 - [API Architecture](API_ARCHITECTURE.md)
+- [Canonical PostgreSQL ERD](docs/database/WB_FULL_ERD.md)
+- [ERD Architecture Review](docs/database/WB_ERD_ARCHITECTURE_REVIEW.md)
 
 The API runs on `http://localhost:4000`, Swagger is available at `http://localhost:4000/docs`, and the Web app runs on `http://localhost:3000`. The default local seed account is `admin@wb.local` with `ChangeMe123!`; change it before using any shared environment.
+
+### Database Foundation
+
+WB uses one PostgreSQL database per environment with a dedicated PostgreSQL schema for each Modular Monolith Module. The canonical ERD is generated from `database/migrations/002_modular_schemas.sql`, so the table dictionary, Foreign Key matrix, Mermaid sources, and rendered PNG diagrams are reviewed from the executable Database Foundation. V0 activates only the minimum Auth, Community, Content, Events, Notifications, and Audit paths; future Verification, Directory, Trust, Channel policy, recurrence, and outbox tables exist from the beginning without forcing their endpoints into V0.
 
 ---
 

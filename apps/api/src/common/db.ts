@@ -29,8 +29,8 @@ export function dbUser(row: Record<string, unknown> | undefined) {
   return {
     id: String(row.id),
     email: String(row.email),
-    phoneNumber: String(row.phone_number),
-    displayName: String(row.display_name),
+    phoneNumber: String(row.phone_e164 ?? row.phone_number ?? ''),
+    displayName: String(row.display_name ?? ''),
     platformRole: String(row.platform_role),
     emailVerifiedAt: row.email_verified_at ? new Date(String(row.email_verified_at)).toISOString() : null,
     status: String(row.status),

@@ -21,7 +21,7 @@ export class EventsController {
   }
 
   @Patch(':id')
-  update(@CurrentUser() user: any, @Param('id') id: string, @Body() body: { title?: string; description?: string; startsAt?: string; zoomUrl?: string; status?: 'published' | 'cancelled' | 'completed' }) {
+  update(@CurrentUser() user: any, @Param('id') id: string, @Body() body: { title?: string; description?: string; startsAt?: string; timezone?: string; zoomUrl?: string; status?: 'published' | 'cancelled' | 'completed' }) {
     return this.events.update(user, id, body);
   }
 

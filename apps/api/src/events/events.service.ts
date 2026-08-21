@@ -1,22 +1,65 @@
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { query } from '../common/db';
+import { query, transaction } from '../common/db';
 import { CommunitiesService } from '../communities/communities.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { AuditService } from '../system/audit.service';
 
 type User = { id: string; platformRole: string; emailVerifiedAt: string | null };
+type EventRow = Record<string, any> & {
+  id: string;
+  occurrence_id: string;
+  starts_at: string;
+  zoom_url_ciphertext: string;
+  zoom_url_iv: string;
+  zoom_url_auth_tag: string;
+};
+
+type EventInput = {
+  title: string;
+  description?: string;
+  startsAt: string;
+  timezone?: string;
+  zoomUrl: string;
+  visibility: 'public' | 'private';
+  communityId?: string;
+  groupId?: string;
+};
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly communities: CommunitiesService) {}
+  constructor(
+    private readonly communities: CommunitiesService,
+    private readonly notifications: NotificationsService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async list(user: User) {
     const result = await query<Record<string, unknown>>(
-      `SELECT e.id, e.title, e.description, e.starts_at, e.timezone, e.visibility, e.community_id, e.group_id, e.status,
+      `SELECT ec.id, ec.title, ec.description, ec.starts_at, ec.ends_at, ec.timezone,
+              ec.visibility, ec.community_id, ec.group_id, ec.status, ec.occurrence_status,
               c.name AS community_name,
-              EXISTS (SELECT 1 FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = $1 AND r.status = 'registered') AS registered
-       FROM events e LEFT JOIN communities c ON c.id = e.community_id
-       WHERE e.status = 'published' AND (e.visibility = 'public' OR $2 = 'platform_admin' OR EXISTS (
-         SELECT 1 FROM community_memberships m WHERE m.community_id = e.community_id AND m.user_id = $1 AND m.status = 'active'
-       )) ORDER BY e.starts_at ASC`,
+              EXISTS (
+                SELECT 1 FROM event.registrations r
+                WHERE r.occurrence_id = ec.occurrence_id
+                  AND r.user_id = $1 AND r.status = 'registered'
+              ) AS registered
+       FROM event.catalog ec
+       LEFT JOIN community.communities c ON c.id = ec.community_id
+       WHERE ec.status = 'published'
+         AND ec.occurrence_status = 'scheduled'
+         AND (
+           ec.visibility = 'public'
+           OR $2 = 'platform_admin'
+           OR (
+             ec.community_id IS NOT NULL
+             AND EXISTS (
+               SELECT 1 FROM community.memberships m
+               WHERE m.community_id = ec.community_id AND m.user_id = $1 AND m.status = 'active'
+             )
+           )
+         )
+       ORDER BY ec.starts_at ASC`,
       [user.id, user.platformRole],
     );
     return result.rows;
@@ -25,76 +68,198 @@ export class EventsService {
   async get(user: User, eventId: string) {
     const row = await this.getRow(eventId);
     await this.requireAccess(user, row);
-    const registration = await query<{ status: string }>('SELECT status FROM event_registrations WHERE event_id = $1 AND user_id = $2', [eventId, user.id]);
+    const registration = await query<{ status: string }>(
+      'SELECT status FROM event.registrations WHERE occurrence_id = $1 AND user_id = $2',
+      [row.occurrence_id, user.id],
+    );
     const registered = registration.rows[0]?.status === 'registered';
     return {
-      id: row.id, title: row.title, description: row.description, startsAt: row.starts_at, timezone: row.timezone,
-      visibility: row.visibility, communityId: row.community_id, groupId: row.group_id, status: row.status,
-      registered, zoomUrl: registered || user.platformRole === 'platform_admin' ? row.zoom_url : null,
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      timezone: row.timezone,
+      visibility: row.visibility,
+      communityId: row.community_id,
+      groupId: row.group_id,
+      status: row.status,
+      occurrenceId: row.occurrence_id,
+      registered,
+      zoomUrl: registered || user.platformRole === 'platform_admin' ? decryptZoomUrl(row) : null,
     };
   }
 
-  async create(user: User, input: { title: string; description?: string; startsAt: string; timezone?: string; zoomUrl: string; visibility: 'public' | 'private'; communityId?: string; groupId?: string }) {
-    if (input.visibility === 'private' && !input.communityId) throw new ForbiddenException('Private events require a community');
-    if (input.communityId) await this.communities.requireCommunityAdmin(user, input.communityId);
-    else if (user.platformRole !== 'platform_admin') throw new ForbiddenException('Platform admin permission required');
-    if (input.groupId) {
-      const group = await query<{ community_id: string }>('SELECT community_id FROM groups WHERE id = $1 AND status = \'active\'', [input.groupId]);
-      if (!group.rows[0] || group.rows[0].community_id !== input.communityId) throw new ForbiddenException('Group does not belong to the selected community');
+  async create(user: User, input: EventInput) {
+    if (input.visibility === 'private' && !input.communityId) {
+      throw new ForbiddenException('Private events require a community');
     }
-    const result = await query<Record<string, unknown>>(
-      `INSERT INTO events (title, description, starts_at, timezone, zoom_url, visibility, community_id, group_id, status, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'published',$9) RETURNING id, title, description, starts_at, timezone, visibility, community_id, group_id, status`,
-      [input.title.trim(), input.description?.trim() ?? '', new Date(input.startsAt), input.timezone ?? 'Asia/Riyadh', input.zoomUrl.trim(), input.visibility, input.communityId ?? null, input.groupId ?? null, user.id],
-    );
-    await query('INSERT INTO audit_events (actor_id, action, resource_type, resource_id) VALUES ($1,$2,$3,$4)', [user.id, 'event_created', 'event', result.rows[0].id]);
-    return result.rows[0];
+    if (input.groupId) {
+      const group = await query<{ community_id: string }>(
+        `SELECT community_id FROM community.groups WHERE id = $1 AND status = 'active'`,
+        [input.groupId],
+      );
+      if (!group.rows[0] || group.rows[0].community_id !== input.communityId) {
+        throw new ForbiddenException('Group does not belong to the selected community');
+      }
+      await this.communities.requireGroupModerator(user, input.groupId);
+    } else if (input.communityId) {
+      await this.communities.requireCommunityAdmin(user, input.communityId);
+    } else {
+      this.communities.requirePlatformAdmin(user);
+    }
+
+    const encrypted = encryptZoomUrl(input.zoomUrl.trim());
+    const result = await transaction(async (client) => {
+      const event = await client.query<{ id: string }>(
+        `INSERT INTO event.events (title, description, status, created_by)
+         VALUES ($1, $2, 'published', $3) RETURNING id`,
+        [input.title.trim(), input.description?.trim() ?? '', user.id],
+      );
+      const eventId = event.rows[0].id;
+      const occurrence = await client.query<Record<string, unknown>>(
+        `INSERT INTO event.occurrences
+           (event_id, sequence_no, starts_at, timezone, zoom_url_ciphertext, zoom_url_iv, zoom_url_auth_tag)
+         VALUES ($1, 1, $2, $3, $4, $5, $6)
+         RETURNING id, starts_at, timezone, status`,
+        [eventId, new Date(input.startsAt), input.timezone ?? 'Asia/Riyadh', encrypted.ciphertext, encrypted.iv, encrypted.authTag],
+      );
+      if (input.visibility === 'public') {
+        await client.query('INSERT INTO event.public_events (event_id) VALUES ($1)', [eventId]);
+      } else if (input.groupId) {
+        await client.query('INSERT INTO event.private_group_events (event_id, group_id) VALUES ($1, $2)', [eventId, input.groupId]);
+      } else {
+        await client.query('INSERT INTO event.private_community_events (event_id, community_id) VALUES ($1, $2)', [eventId, input.communityId]);
+      }
+      await client.query(
+        `INSERT INTO event.organizers (event_id, user_id, organizer_role)
+         VALUES ($1, $2, 'organizer')`,
+        [eventId, user.id],
+      );
+      return { id: eventId, occurrence: occurrence.rows[0] };
+    });
+    await this.auditService.record(user.id, 'event_created', 'event', result.id);
+    return result;
   }
 
-  async update(user: User, eventId: string, input: { title?: string; description?: string; startsAt?: string; zoomUrl?: string; status?: 'published' | 'cancelled' | 'completed' }) {
+  async update(user: User, eventId: string, input: { title?: string; description?: string; startsAt?: string; timezone?: string; zoomUrl?: string; status?: 'published' | 'cancelled' | 'completed' }) {
     const row = await this.getRow(eventId);
     if (user.platformRole !== 'platform_admin') {
-      if (!row.community_id) throw new ForbiddenException('Permission denied');
-      await this.communities.requireCommunityAdmin(user, String(row.community_id));
+      if (row.group_id) await this.communities.requireGroupModerator(user, String(row.group_id));
+      else if (row.community_id) await this.communities.requireCommunityAdmin(user, String(row.community_id));
+      else throw new ForbiddenException('Permission denied');
     }
-    const result = await query<Record<string, unknown>>(
-      `UPDATE events SET title = COALESCE($1, title), description = COALESCE($2, description), starts_at = COALESCE($3, starts_at), zoom_url = COALESCE($4, zoom_url), status = COALESCE($5, status), updated_at = now()
-       WHERE id = $6 RETURNING id, title, description, starts_at, timezone, visibility, community_id, group_id, status`,
-      [input.title?.trim() ?? null, input.description?.trim() ?? null, input.startsAt ? new Date(input.startsAt) : null, input.zoomUrl?.trim() ?? null, input.status ?? null, eventId],
-    );
+    const encrypted = input.zoomUrl ? encryptZoomUrl(input.zoomUrl.trim()) : null;
+    const result = await transaction(async (client) => {
+      const event = await client.query<Record<string, unknown>>(
+        `UPDATE event.events
+         SET title = COALESCE($1, title),
+             description = COALESCE($2, description),
+             status = COALESCE($3, status),
+             updated_at = now()
+         WHERE id = $4
+         RETURNING id, title, description, status, updated_at`,
+        [input.title?.trim() ?? null, input.description?.trim() ?? null, input.status ?? null, eventId],
+      );
+      await client.query(
+        `UPDATE event.occurrences
+         SET starts_at = COALESCE($1, starts_at),
+             timezone = COALESCE($2, timezone),
+             zoom_url_ciphertext = COALESCE($3, zoom_url_ciphertext),
+             zoom_url_iv = COALESCE($4, zoom_url_iv),
+             zoom_url_auth_tag = COALESCE($5, zoom_url_auth_tag),
+             updated_at = now()
+         WHERE id = $6`,
+        [input.startsAt ? new Date(input.startsAt) : null, input.timezone ?? null, encrypted?.ciphertext ?? null, encrypted?.iv ?? null, encrypted?.authTag ?? null, row.occurrence_id],
+      );
+      return event.rows[0];
+    });
     if (input.status === 'cancelled') {
-      await query(`INSERT INTO notifications (user_id, type, payload) SELECT user_id, 'event_cancelled', jsonb_build_object('eventId', $1) FROM event_registrations WHERE event_id = $1 AND status = 'registered'`, [eventId]);
+      const recipients = await query<{ user_id: string }>(
+        `SELECT user_id FROM event.registrations WHERE occurrence_id = $1 AND status = 'registered'`,
+        [row.occurrence_id],
+      );
+      for (const recipient of recipients.rows) {
+        await this.notifications.notifyEvent(recipient.user_id, user.id, row.occurrence_id, 'cancelled');
+      }
     }
-    return result.rows[0];
+    await this.auditService.record(user.id, input.status === 'cancelled' ? 'event_cancelled' : 'event_updated', 'event', eventId);
+    return result;
   }
 
   async register(user: User, eventId: string) {
     const row = await this.getRow(eventId);
     await this.requireAccess(user, row);
-    if (row.status !== 'published') throw new ForbiddenException('Event is not open for registration');
+    if (row.status !== 'published' || row.occurrence_status !== 'scheduled') {
+      throw new ForbiddenException('Event is not open for registration');
+    }
     const result = await query<Record<string, unknown>>(
-      `INSERT INTO event_registrations (event_id, user_id, status) VALUES ($1,$2,'registered')
-       ON CONFLICT (event_id, user_id) DO UPDATE SET status = 'registered', cancelled_at = NULL RETURNING *`,
-      [eventId, user.id],
+      `INSERT INTO event.registrations (occurrence_id, user_id, status, registered_at, cancelled_at)
+       VALUES ($1, $2, 'registered', now(), NULL)
+       ON CONFLICT (occurrence_id, user_id)
+       DO UPDATE SET status = 'registered', registered_at = now(), cancelled_at = NULL
+       RETURNING *`,
+      [row.occurrence_id, user.id],
     );
-    await query('INSERT INTO notifications (user_id, type, payload) VALUES ($1,$2,$3)', [user.id, 'event_registered', JSON.stringify({ eventId })]);
+    await this.notifications.notifyEvent(user.id, user.id, row.occurrence_id, 'registered');
     return result.rows[0];
   }
 
   async cancelRegistration(user: User, eventId: string) {
-    await query('UPDATE event_registrations SET status = \'cancelled\', cancelled_at = now() WHERE event_id = $1 AND user_id = $2', [eventId, user.id]);
+    const row = await this.getRow(eventId);
+    await this.requireAccess(user, row);
+    await query(
+      `UPDATE event.registrations
+       SET status = 'cancelled', cancelled_at = now()
+       WHERE occurrence_id = $1 AND user_id = $2 AND status = 'registered'`,
+      [row.occurrence_id, user.id],
+    );
     return { success: true };
   }
 
-  private async getRow(eventId: string) {
-    const result = await query<Record<string, any>>('SELECT * FROM events WHERE id = $1', [eventId]);
+  private async getRow(eventId: string): Promise<EventRow> {
+    const result = await query<EventRow>('SELECT * FROM event.catalog WHERE id = $1', [eventId]);
     if (!result.rows[0]) throw new NotFoundException('Event not found');
     return result.rows[0];
   }
 
-  private async requireAccess(user: User, row: Record<string, any>) {
+  private async requireAccess(user: User, row: EventRow) {
     if (row.visibility === 'public' || user.platformRole === 'platform_admin') return;
+    if (row.group_id) {
+      if (!(await this.communities.canAccessScope(user, 'group', String(row.group_id)))) {
+        throw new ForbiddenException('Group membership required');
+      }
+      return;
+    }
     if (!row.community_id) throw new ForbiddenException('Private event is not configured correctly');
     await this.communities.requireActiveMember(user, String(row.community_id));
   }
+
+}
+
+function encryptionKey() {
+  const configured = process.env.EVENT_URL_ENCRYPTION_KEY;
+  if (configured && /^[0-9a-fA-F]{64}$/.test(configured)) return Buffer.from(configured, 'hex');
+  if (process.env.NODE_ENV === 'production') throw new Error('EVENT_URL_ENCRYPTION_KEY must be a 32-byte hex key in production');
+  return createHash('sha256').update(configured ?? 'wb-local-development-event-key').digest();
+}
+
+function encryptZoomUrl(value: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+  return {
+    ciphertext: ciphertext.toString('base64'),
+    iv: iv.toString('base64'),
+    authTag: cipher.getAuthTag().toString('base64'),
+  };
+}
+
+function decryptZoomUrl(row: EventRow) {
+  const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(row.zoom_url_iv, 'base64'));
+  decipher.setAuthTag(Buffer.from(row.zoom_url_auth_tag, 'base64'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(row.zoom_url_ciphertext, 'base64')),
+    decipher.final(),
+  ]).toString('utf8');
 }

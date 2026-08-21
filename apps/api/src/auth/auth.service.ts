@@ -28,39 +28,57 @@ export class AuthService {
 
   async register(input: { email: string; password: string; phoneNumber: string; displayName: string }) {
     const email = normalizeEmail(input.email);
+    const phoneNumber = input.phoneNumber.trim();
+    const displayName = input.displayName.trim();
     if (input.password.length < 10) throw new BadRequestException('Password must be at least 10 characters');
+    if (!/^\+[1-9][0-9]{7,14}$/.test(phoneNumber)) throw new BadRequestException('Phone number must use E.164 format');
+    if (!displayName) throw new BadRequestException('Display name is required');
     const passwordHash = await bcrypt.hash(input.password, 12);
-    const result = await query<{ id: string }>(
-      `INSERT INTO users (email, password_hash, phone_number, display_name)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [email, passwordHash, input.phoneNumber.trim(), input.displayName.trim()],
-    ).catch((error: { code?: string }) => {
-      if (error.code === '23505') throw new BadRequestException('An account with this email already exists');
-      throw error;
+    const user = await transaction(async (client) => {
+      try {
+        const result = await client.query<{ id: string }>(
+          `INSERT INTO auth.users (email, password_hash)
+           VALUES ($1, $2) RETURNING id`,
+          [email, passwordHash],
+        );
+        const userId = result.rows[0].id;
+        await client.query('INSERT INTO auth.user_phones (user_id, phone_e164) VALUES ($1, $2)', [userId, phoneNumber]);
+        await client.query('INSERT INTO profile.profiles (user_id, display_name) VALUES ($1, $2)', [userId, displayName]);
+        return userId;
+      } catch (error: any) {
+        if (error.code === '23505') throw new BadRequestException('An account with this email or phone already exists');
+        throw error;
+      }
     });
-    await query('INSERT INTO profiles (user_id) VALUES ($1)', [result.rows[0].id]);
-    await this.issueEmailVerification(result.rows[0].id, email);
+    await this.issueEmailVerification(user, email);
     return { message: 'Account created. Check your email to activate it.' };
   }
 
   async login(emailInput: string, password: string) {
     const email = normalizeEmail(emailInput);
-    const result = await query<Record<string, unknown>>('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
+    const result = await query<Record<string, unknown>>(
+      `SELECT u.*, ph.phone_e164, p.display_name
+       FROM auth.users u
+       LEFT JOIN auth.user_phones ph ON ph.user_id = u.id
+       LEFT JOIN profile.profiles p ON p.user_id = u.id
+       WHERE u.email = $1 LIMIT 1`,
+      [email],
+    );
     const row = result.rows[0];
     const valid = row ? await bcrypt.compare(password, String(row.password_hash)) : false;
     if (!row || !valid) {
-      await query('INSERT INTO auth_security_events (user_id, event_type) VALUES ($1, $2)', [row?.id ?? null, 'login_failed']);
+      await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [row?.id ?? null, 'login_failed']);
       throw new UnauthorizedException('Invalid email or password');
     }
     if (row.status !== 'active') throw new UnauthorizedException('Account is not active');
-    await query('INSERT INTO auth_security_events (user_id, event_type) VALUES ($1, $2)', [row.id, 'login_succeeded']);
+    await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [row.id, 'login_succeeded']);
     return { user: dbUser(row) as PublicUser, token: await this.createSession(String(row.id)) };
   }
 
   async createSession(userId: string) {
     const token = randomBytes(32).toString('base64url');
     await query(
-      `INSERT INTO sessions (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '30 days')`,
+      `INSERT INTO auth.sessions (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '30 days')`,
       [userId, hashToken(token)],
     );
     return token;
@@ -69,7 +87,10 @@ export class AuthService {
   async getUserBySession(token: string | undefined): Promise<PublicUser | null> {
     if (!token) return null;
     const result = await query<Record<string, unknown>>(
-      `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+      `SELECT u.*, ph.phone_e164, p.display_name FROM auth.sessions s
+       JOIN auth.users u ON u.id = s.user_id
+       LEFT JOIN auth.user_phones ph ON ph.user_id = u.id
+       LEFT JOIN profile.profiles p ON p.user_id = u.id
        WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND u.status = 'active'`,
       [hashToken(token)],
     );
@@ -78,20 +99,20 @@ export class AuthService {
 
   async revokeSession(token: string | undefined) {
     if (!token) return;
-    await query('UPDATE sessions SET revoked_at = now() WHERE token_hash = $1', [hashToken(token)]);
+    await query('UPDATE auth.sessions SET revoked_at = now() WHERE token_hash = $1', [hashToken(token)]);
   }
 
   async listSessions(userId: string) {
     const result = await query<{ id: string; created_at: string; expires_at: string; revoked_at: string | null }>(
-      `SELECT id, created_at, expires_at, revoked_at FROM sessions WHERE user_id = $1 ORDER BY created_at DESC`,
+      `SELECT id, created_at, expires_at, revoked_at FROM auth.sessions WHERE user_id = $1 ORDER BY created_at DESC`,
       [userId],
     );
     return result.rows;
   }
 
   async revokeSessionById(userId: string, sessionId: string) {
-    await query('UPDATE sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2', [sessionId, userId]);
-    await query('INSERT INTO auth_security_events (user_id, event_type) VALUES ($1, $2)', [userId, 'session_revoked']);
+    await query('UPDATE auth.sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2', [sessionId, userId]);
+    await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [userId, 'session_revoked']);
     return { success: true };
   }
 
@@ -99,24 +120,24 @@ export class AuthService {
     const tokenHash = hashToken(token);
     const result = await transaction(async (client) => {
       const found = await client.query<{ id: string; user_id: string; email: string }>(
-        `SELECT e.id, e.user_id, u.email FROM email_verification_tokens e JOIN users u ON u.id = e.user_id
+        `SELECT e.id, e.user_id, u.email FROM auth.email_verification_tokens e JOIN auth.users u ON u.id = e.user_id
          WHERE e.token_hash = $1 AND e.used_at IS NULL AND e.expires_at > now() FOR UPDATE`,
         [tokenHash],
       );
       if (!found.rows[0]) throw new BadRequestException('Verification link is invalid or expired');
-      await client.query('UPDATE email_verification_tokens SET used_at = now() WHERE id = $1', [found.rows[0].id]);
-      await client.query('UPDATE users SET email_verified_at = now(), updated_at = now() WHERE id = $1', [found.rows[0].user_id]);
-      await client.query('INSERT INTO auth_security_events (user_id, event_type) VALUES ($1, $2)', [found.rows[0].user_id, 'email_verified']);
+      await client.query('UPDATE auth.email_verification_tokens SET used_at = now() WHERE id = $1', [found.rows[0].id]);
+      await client.query('UPDATE auth.users SET email_verified_at = now(), updated_at = now() WHERE id = $1', [found.rows[0].user_id]);
+      await client.query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [found.rows[0].user_id, 'email_verified']);
       return found.rows[0];
     });
     return { message: `Email ${result.email} verified successfully` };
   }
 
   async issueEmailVerification(userId: string, email: string) {
-    await query('UPDATE email_verification_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [userId]);
+    await query('UPDATE auth.email_verification_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [userId]);
     const token = randomBytes(32).toString('base64url');
     await query(
-      `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')`,
+      `INSERT INTO auth.email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')`,
       [userId, hashToken(token)],
     );
     const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/verify-email?token=${encodeURIComponent(token)}`;
@@ -127,12 +148,12 @@ export class AuthService {
 
   async forgotPassword(emailInput: string) {
     const email = normalizeEmail(emailInput);
-    const result = await query<{ id: string }>('SELECT id FROM users WHERE email = $1 LIMIT 1', [email]);
+    const result = await query<{ id: string }>('SELECT id FROM auth.users WHERE email = $1 LIMIT 1', [email]);
     if (!result.rows[0]) return { message: 'If the account exists, a reset email will be sent.' };
     const token = randomBytes(32).toString('base64url');
-    await query('UPDATE password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [result.rows[0].id]);
+    await query('UPDATE auth.password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [result.rows[0].id]);
     await query(
-      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`,
+      `INSERT INTO auth.password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`,
       [result.rows[0].id, hashToken(token)],
     );
     const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(token)}`;
@@ -146,16 +167,16 @@ export class AuthService {
     const hash = await bcrypt.hash(password, 12);
     const result = await transaction(async (client) => {
       const found = await client.query<{ id: string; user_id: string }>(
-        `SELECT id, user_id FROM password_reset_tokens WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() FOR UPDATE`,
+        `SELECT id, user_id FROM auth.password_reset_tokens WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() FOR UPDATE`,
         [hashToken(token)],
       );
       if (!found.rows[0]) throw new BadRequestException('Reset link is invalid or expired');
-      await client.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [hash, found.rows[0].user_id]);
-      await client.query('UPDATE password_reset_tokens SET used_at = now() WHERE id = $1', [found.rows[0].id]);
-      await client.query('UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [found.rows[0].user_id]);
+      await client.query('UPDATE auth.users SET password_hash = $1, updated_at = now() WHERE id = $2', [hash, found.rows[0].user_id]);
+      await client.query('UPDATE auth.password_reset_tokens SET used_at = now() WHERE id = $1', [found.rows[0].id]);
+      await client.query('UPDATE auth.sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [found.rows[0].user_id]);
       return found.rows[0];
     });
-    await query('INSERT INTO auth_security_events (user_id, event_type) VALUES ($1, $2)', [result.user_id, 'password_reset']);
+    await query('INSERT INTO auth.security_events (user_id, event_type) VALUES ($1, $2)', [result.user_id, 'password_reset']);
     return { message: 'Password reset successfully' };
   }
 

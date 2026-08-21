@@ -28,7 +28,7 @@ export class CommunitiesController {
   requests(@CurrentUser() user: any, @Param('id') id: string) { return this.communities.membershipRequests(user, id); }
 
   @Post('admin/membership-requests/:id/approve')
-  approve(@CurrentUser() user: any, @Param('id') id: string) { return this.communities.decideMembership(user, id, 'active'); }
+  approve(@CurrentUser() user: any, @Param('id') id: string) { return this.communities.decideMembership(user, id, 'approved'); }
 
   @Post('admin/membership-requests/:id/reject')
   reject(@CurrentUser() user: any, @Param('id') id: string) { return this.communities.decideMembership(user, id, 'rejected'); }

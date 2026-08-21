@@ -1,0 +1,53 @@
+flowchart LR
+    WB[WB Modular Monolith<br/>NestJS + REST/OpenAPI]
+    DB[(PostgreSQL<br/>one database per environment)]
+    REDIS[(Redis<br/>rate limits + queues)]
+    S3[(Private S3-compatible<br/>object storage)]
+
+    subgraph DBSCHEMAS[PostgreSQL Schemas]
+      AUTH[auth<br/>identity sessions security]
+      PROFILE[profile<br/>profiles skills services]
+      COMMUNITY[community<br/>communities memberships groups roles]
+      CONTENT[content<br/>channels posts comments reactions]
+      EVENT[event<br/>events occurrences audiences registrations]
+      MOD[moderation<br/>reports actions sanctions]
+      VER[verification<br/>requests evidence reviews badges]
+      DIR[directory<br/>experts services opportunities]
+      TRUST[trust<br/>signals points badges reputation]
+      SYSTEM[system<br/>audit notifications outbox jobs]
+    end
+
+    WB -->|Auth Module| AUTH
+    WB -->|Profile Module| PROFILE
+    WB -->|Community Module| COMMUNITY
+    WB -->|Content Module| CONTENT
+    WB -->|Events Module| EVENT
+    WB -->|Moderation Module| MOD
+    WB -->|Verification Module| VER
+    WB -->|Directory Module| DIR
+    WB -->|Trust Module| TRUST
+    WB -->|System Module| SYSTEM
+
+    AUTH -->|identity FKs| PROFILE
+    AUTH -->|user FKs| COMMUNITY
+    AUTH -->|author FKs| CONTENT
+    AUTH -->|creator/registrant FKs| EVENT
+    COMMUNITY -->|scope + membership FKs| CONTENT
+    COMMUNITY -->|audience FKs| EVENT
+    CONTENT -->|typed report sources| MOD
+    EVENT -->|event report sources| MOD
+    PROFILE -->|owned skill/service FKs| VER
+    EVENT -->|occurrence signals| TRUST
+    CONTENT -->|post/comment signals| TRUST
+    MOD -->|moderation signals| TRUST
+    CONTENT -->|notification targets| SYSTEM
+    COMMUNITY -->|membership targets| SYSTEM
+    EVENT -->|occurrence targets| SYSTEM
+
+    WB <--> REDIS
+    WB <--> S3
+
+    classDef core fill:#e0f2fe,stroke:#0369a1,stroke-width:2px,color:#082f49;
+    classDef support fill:#fef3c7,stroke:#b45309,stroke-width:2px,color:#451a03;
+    class AUTH,PROFILE,COMMUNITY,CONTENT,EVENT core;
+    class MOD,VER,DIR,TRUST,SYSTEM support;

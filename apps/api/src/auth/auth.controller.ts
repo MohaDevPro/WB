@@ -19,7 +19,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() body: { email: string; password: string }, @Res({ passthrough: true }) response: Response) {
     const result = await this.auth.login(body.email, body.password);
-    response.cookie('wk_session', result.token, {
+    response.cookie('wb_session', result.token, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
@@ -31,8 +31,8 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    await this.auth.revokeSession(request.cookies?.wk_session as string | undefined);
-    response.clearCookie('wk_session', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' });
+    await this.auth.revokeSession(request.cookies?.wb_session as string | undefined);
+    response.clearCookie('wb_session', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' });
     return { success: true };
   }
 

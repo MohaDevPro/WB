@@ -1,0 +1,249 @@
+erDiagram
+    content_attachments {
+        UUID id PK
+        UUID uploaded_by FK
+        TEXT object_key UK
+        VARCHAR_255_ original_filename
+        VARCHAR_120_ mime_type
+        BIGINT byte_size
+        CHAR_64_ checksum_sha256
+        TIMESTAMPTZ created_at
+    }
+    content_channel_policies {
+        UUID channel_id PK
+        BOOLEAN can_member_read
+        BOOLEAN can_member_publish
+        BOOLEAN can_moderator_publish
+        BOOLEAN can_community_admin_publish
+        BOOLEAN can_platform_admin_publish
+        TIMESTAMPTZ updated_at
+    }
+    content_channel_posts {
+        UUID post_id PK
+        UUID channel_id FK
+    }
+    content_channels {
+        UUID id PK
+        VARCHAR_160_ name
+        VARCHAR_30_ channel_type
+        VARCHAR_20_ status
+        UUID created_by FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    content_comments {
+        UUID id PK
+        UUID post_id FK
+        UUID author_id FK
+        TEXT body
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    content_community_channels {
+        UUID channel_id PK
+        UUID community_id FK
+        CITEXT slug
+    }
+    content_community_posts {
+        UUID post_id PK
+        UUID community_id FK
+    }
+    content_group_channels {
+        UUID channel_id PK
+        UUID group_id FK
+        CITEXT slug
+    }
+    content_group_posts {
+        UUID post_id PK
+        UUID group_id FK
+    }
+    content_post_attachments {
+        UUID post_id FK
+        UUID attachment_id FK
+        SMALLINT position
+    }
+    content_post_visibility {
+        UUID post_id PK
+        VARCHAR_30_ visibility
+        TIMESTAMPTZ updated_at
+    }
+    content_posts {
+        UUID id PK
+        UUID author_id FK
+        TEXT body
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    content_reactions {
+        UUID post_id FK
+        UUID user_id FK
+        VARCHAR_30_ reaction_type
+        TIMESTAMPTZ created_at
+    }
+    event_access_rules {
+        UUID id PK
+        UUID event_id FK
+        VARCHAR_40_ rule_type
+        TEXT rule_value
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    event_attendance {
+        UUID occurrence_id FK
+        UUID user_id FK
+        TIMESTAMPTZ checked_in_at
+        VARCHAR_30_ checkin_method
+    }
+    event_event_speakers {
+        UUID event_id FK
+        UUID speaker_id FK
+        VARCHAR_40_ speaker_role
+        SMALLINT position
+    }
+    event_events {
+        UUID id PK
+        VARCHAR_240_ title
+        TEXT description
+        VARCHAR_20_ status
+        UUID created_by FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    event_occurrences {
+        UUID id PK
+        UUID event_id FK
+        INTEGER sequence_no
+        TIMESTAMPTZ starts_at
+        TIMESTAMPTZ ends_at
+        VARCHAR_80_ timezone
+        TEXT zoom_url_ciphertext
+        CHAR_16_ zoom_url_iv
+        CHAR_24_ zoom_url_auth_tag
+        VARCHAR_20_ status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    event_organizers {
+        UUID event_id FK
+        UUID user_id FK
+        VARCHAR_40_ organizer_role
+        TIMESTAMPTZ created_at
+    }
+    event_private_community_events {
+        UUID event_id PK
+        UUID community_id FK
+    }
+    event_private_group_events {
+        UUID event_id PK
+        UUID group_id FK
+    }
+    event_public_events {
+        UUID event_id PK
+    }
+    event_registrations {
+        UUID id PK
+        UUID occurrence_id FK
+        UUID user_id FK
+        VARCHAR_20_ status
+        TIMESTAMPTZ registered_at
+        TIMESTAMPTZ cancelled_at
+    }
+    event_speakers {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR_160_ display_name
+        TEXT bio
+        TIMESTAMPTZ created_at
+    }
+    system_audit_events {
+        UUID id PK
+        UUID actor_id FK
+        VARCHAR_120_ action
+        VARCHAR_80_ resource_type
+        UUID resource_id
+        UUID correlation_id
+        VARCHAR_120_ request_id
+        JSONB metadata
+        TIMESTAMPTZ created_at
+    }
+    system_job_records {
+        UUID id PK
+        VARCHAR_100_ job_type
+        VARCHAR_180_ business_key
+        VARCHAR_20_ status
+        INTEGER attempts
+        VARCHAR_120_ worker_id
+        TIMESTAMPTZ locked_until
+        TEXT last_error
+        TIMESTAMPTZ started_at
+        TIMESTAMPTZ finished_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    system_notification_events {
+        UUID notification_id PK
+        UUID occurrence_id FK
+        VARCHAR_30_ event_kind
+    }
+    system_notification_memberships {
+        UUID notification_id PK
+        UUID membership_id FK
+        VARCHAR_20_ decision
+    }
+    system_notification_posts {
+        UUID notification_id PK
+        UUID post_id FK
+    }
+    system_notifications {
+        UUID id PK
+        UUID user_id FK
+        UUID actor_id FK
+        VARCHAR_80_ notification_type
+        VARCHAR_180_ dedupe_key UK
+        TIMESTAMPTZ read_at
+        TIMESTAMPTZ created_at
+    }
+    system_outbox_events {
+        UUID id PK
+        VARCHAR_120_ event_type
+        VARCHAR_80_ aggregate_type
+        UUID aggregate_id
+        JSONB payload
+        VARCHAR_20_ status
+        INTEGER attempts
+        VARCHAR_180_ idempotency_key UK
+        TIMESTAMPTZ available_at
+        TIMESTAMPTZ locked_at
+        TIMESTAMPTZ processed_at
+        TEXT last_error
+        TIMESTAMPTZ created_at
+    }
+    content_channels ||--o{ content_channel_policies : "channel_id -> id"
+    content_posts ||--o{ content_channel_posts : "post_id -> id"
+    content_channels ||--o{ content_channel_posts : "channel_id -> id"
+    content_posts ||--o{ content_comments : "post_id -> id"
+    content_channels ||--o{ content_community_channels : "channel_id -> id"
+    content_posts ||--o{ content_community_posts : "post_id -> id"
+    content_channels ||--o{ content_group_channels : "channel_id -> id"
+    content_posts ||--o{ content_group_posts : "post_id -> id"
+    content_posts ||--o{ content_post_attachments : "post_id -> id"
+    content_attachments ||--o{ content_post_attachments : "attachment_id -> id"
+    content_posts ||--o{ content_post_visibility : "post_id -> id"
+    content_posts ||--o{ content_reactions : "post_id -> id"
+    event_events ||--o{ event_access_rules : "event_id -> id"
+    event_occurrences ||--o{ event_attendance : "occurrence_id -> id"
+    event_events ||--o{ event_event_speakers : "event_id -> id"
+    event_speakers ||--o{ event_event_speakers : "speaker_id -> id"
+    event_events ||--o{ event_occurrences : "event_id -> id"
+    event_events ||--o{ event_organizers : "event_id -> id"
+    event_events ||--o{ event_private_community_events : "event_id -> id"
+    event_events ||--o{ event_private_group_events : "event_id -> id"
+    event_events ||--o{ event_public_events : "event_id -> id"
+    event_occurrences ||--o{ event_registrations : "occurrence_id -> id"
+    system_notifications ||--o{ system_notification_events : "notification_id -> id"
+    event_occurrences ||--o{ system_notification_events : "occurrence_id -> id"
+    system_notifications ||--o{ system_notification_memberships : "notification_id -> id"
+    system_notifications ||--o{ system_notification_posts : "notification_id -> id"
+    content_posts ||--o{ system_notification_posts : "post_id -> id"
