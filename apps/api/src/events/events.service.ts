@@ -1,6 +1,6 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { decryptZoomUrl, encryptZoomUrl } from './event-crypto';
 import { query, transaction } from '../common/db';
 import { CommunitiesService } from '../communities/communities.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -262,33 +262,6 @@ export class EventsService {
     await this.communities.requireActiveMember(user, String(communityId));
   }
 
-}
-
-function encryptionKey() {
-  const configured = process.env.EVENT_URL_ENCRYPTION_KEY;
-  if (isConfiguredKey(configured)) return Buffer.from(configured, 'hex');
-  if (process.env.NODE_ENV === 'production') throw new Error('EVENT_URL_ENCRYPTION_KEY must be a 32-byte hex key in production');
-  return createHash('sha256').update(configured ?? 'wb-local-development-event-key').digest();
-}
-
-function encryptZoomUrl(value: string) {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv);
-  const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
-  return {
-    ciphertext: ciphertext.toString('base64'),
-    iv: iv.toString('base64'),
-    authTag: cipher.getAuthTag().toString('base64'),
-  };
-}
-
-function decryptZoomUrl(row: EventRow) {
-  const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(row.zoom_url_iv, 'base64'));
-  decipher.setAuthTag(Buffer.from(row.zoom_url_auth_tag, 'base64'));
-  return Buffer.concat([
-    decipher.update(Buffer.from(row.zoom_url_ciphertext, 'base64')),
-    decipher.final(),
-  ]).toString('utf8');
 }
 
 function assertPrivateEventScope(input: EventInput) {
