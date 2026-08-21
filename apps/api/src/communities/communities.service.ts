@@ -1,6 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PoolClient } from 'pg';
 import { query, transaction } from '../common/db';
+import {
+  auditMembershipAction,
+  findJoinableCommunity,
+  findMembership,
+  membershipStatus,
+  persistMembership,
+} from './communities.membership';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../system/audit.service';
 
@@ -63,73 +69,16 @@ export class CommunitiesService {
   }
 
   async join(user: User, communityId: string) {
-    const community = await this.findJoinableCommunity(communityId);
+    const community = await findJoinableCommunity(communityId);
+    if (!community || community.status !== 'active') throw new NotFoundException('Community not found');
     const status = membershipStatus(community.visibility, user.platformRole);
-    const result = await transaction((client) => this.persistMembership(client, communityId, user.id, status));
+    const result = await transaction((client) => persistMembership(client, communityId, user.id, status));
     await this.auditService.record(user.id, auditMembershipAction(status), 'community', communityId);
     return result;
   }
 
-  private async findJoinableCommunity(communityId: string) {
-    const result = await query<{ visibility: string; status: string }>(
-      'SELECT visibility, status FROM community.communities WHERE id = $1',
-      [communityId],
-    );
-    const community = result.rows[0];
-    if (!community || community.status !== 'active') throw new NotFoundException('Community not found');
-    return community;
-  }
-
-  private async persistMembership(client: PoolClient, communityId: string, userId: string, status: 'active' | 'pending') {
-    const membership = await client.query<Record<string, unknown>>(
-      `INSERT INTO community.memberships (community_id, user_id, status)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (community_id, user_id)
-       DO UPDATE SET status = CASE
-         WHEN community.memberships.status IN ('removed', 'rejected') THEN EXCLUDED.status
-         ELSE community.memberships.status
-       END, updated_at = now()
-       RETURNING *`,
-      [communityId, userId, status],
-    );
-    const membershipId = membership.rows[0].id as string;
-    return status === 'active'
-      ? this.activateMembership(client, membership.rows[0], membershipId)
-      : this.queueMembershipRequest(client, communityId, userId, membership.rows[0]);
-  }
-
-  private async activateMembership(client: PoolClient, membership: Record<string, unknown>, membershipId: string) {
-    await client.query(
-      `INSERT INTO community.membership_roles (membership_id, role_code)
-       VALUES ($1, 'member') ON CONFLICT DO NOTHING`,
-      [membershipId],
-    );
-    return membership;
-  }
-
-  private async queueMembershipRequest(client: PoolClient, communityId: string, userId: string, membership: Record<string, unknown>) {
-    await client.query(
-      `INSERT INTO community.membership_requests (community_id, user_id, status)
-       VALUES ($1, $2, 'pending')
-       ON CONFLICT (community_id, user_id) WHERE status = 'pending'
-       DO UPDATE SET updated_at = now()
-       RETURNING id`,
-      [communityId, userId],
-    );
-    return membership;
-  }
-
   async membership(user: User, communityId: string): Promise<MembershipRow> {
-    const result = await query<MembershipRow>(
-      `SELECT m.*,
-              COALESCE((SELECT string_agg(mr.role_code, ',' ORDER BY mr.role_code)
-                        FROM community.membership_roles mr
-                        WHERE mr.membership_id = m.id), 'member') AS membership_roles
-       FROM community.memberships m
-       WHERE m.community_id = $1 AND m.user_id = $2`,
-      [communityId, user.id],
-    );
-    return result.rows[0] ?? { status: 'none', membership_roles: 'member' };
+    return findMembership(user.id, communityId);
   }
 
   async groups(user: User, communityId: string) {
@@ -259,7 +208,7 @@ export class CommunitiesService {
 
   async requireActiveMember(user: User, communityId: string) {
     if (user.platformRole === 'platform_admin') return;
-    const membership = await this.membership(user, communityId);
+    const membership = await findMembership(user.id, communityId);
     if (membership.status !== 'active') throw new ForbiddenException('Active community membership required');
   }
 
@@ -327,7 +276,7 @@ export class CommunitiesService {
     );
     const communityId = group.rows[0]?.community_id;
     if (!communityId) return false;
-    const communityMembership = await this.membership(user, communityId);
+    const communityMembership = await findMembership(user.id, communityId);
     if (communityMembership.status === 'active') return true;
     const direct = await query(
       `SELECT 1 FROM community.group_memberships
@@ -344,12 +293,4 @@ export class CommunitiesService {
       [actorId, action, resourceType, resourceId],
     );
   }
-}
-
-function membershipStatus(visibility: string, platformRole: string): 'active' | 'pending' {
-  return visibility === 'public' || platformRole === 'platform_admin' ? 'active' : 'pending';
-}
-
-function auditMembershipAction(status: 'active' | 'pending') {
-  return status === 'active' ? 'membership_activated' : 'membership_requested';
 }
