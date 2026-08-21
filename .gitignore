@@ -12,3 +12,5 @@ reports/ui/
 .impeccable/review/
 
 *.tsbuildinfo
+test-results/
+playwright-report/

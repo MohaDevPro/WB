@@ -12,6 +12,7 @@
 | Mutation | تغيير قواعد V0 آليًا والتحقق من قدرة الاختبارات على كشف التغيير | Stryker | ≥ 70%؛ الوضع الحالي 92.31% |
 | Database smoke | تطبيق `001_bootstrap.sql` و`002_modular_schemas.sql` وseed على PostgreSQL نظيفة | GitHub Actions PostgreSQL service | 167 Foreign Keys وسجلتا migrations |
 | UI quality | RTL، focus-visible، reduced motion، browser surfaces وعدم gradient text | Impeccable محليًا + `scripts/ui-quality-check.mjs` في CI | لا findings حرجة |
+| Browser E2E | Landing، Auth login، Dashboard، Feed post/like/comment، Events، Notifications، Profile، Admin، responsive mobile | Playwright Chromium | كل الرحلات الأساسية ناجحة؛ الوضع الحالي 5/5 |
 | Type/build | API وWeb | TypeScript وNext.js | `pnpm check` و`pnpm build` ناجحان |
 
 ## الأوامر المحلية
@@ -23,6 +24,7 @@ pnpm test:coverage
 pnpm test:mutation
 pnpm quality:metrics
 pnpm quality
+pnpm test:e2e
 pnpm build
 node scripts/ui-quality-check.mjs
 ```
@@ -31,7 +33,7 @@ node scripts/ui-quality-check.mjs
 
 ## Quality Gates
 
-توقف CI عند انخفاض coverage عن 80%، أو mutation score عن 70%، أو ظهور circular relative dependencies، أو فشل typecheck/tests/build، أو مخالفة قواعد UI الآلية. ويظهر تعقيد الدوال وحجم الملفات كتقرير تحذيري قابل للتنفيذ؛ لا نخفي technical debt القديم، لكننا نمنع إدخال تراجع جديد في السلوك الحرج.
+توقف CI عند انخفاض coverage عن 80%، أو mutation score عن 70%، أو ظهور circular relative dependencies، أو فشل typecheck/tests/build، أو مخالفة قواعد UI الآلية، أو فشل Playwright browser E2E. ويقيس Uncle Bob metrics التعقيد وحجم الملفات والدوال وبنية الاعتماديات في كل تشغيل.
 
 ## V0 journeys التي يجب استمرار اختبارها
 
@@ -45,4 +47,4 @@ node scripts/ui-quality-check.mjs
 
 ## حدود V0 الحالية
 
-اختبارات database integration وE2E المتصفح الكامل مؤجلة إلى مرحلة test harness مستقلة لأنها تحتاج PostgreSQL seed معزولًا وبيانات اختبار قابلة لإعادة الإنشاء. لا يعني ذلك أن المسارات غير موجودة؛ بل يعني أن CI الحالي يثبت migration smoke وservice boundaries، ويترك اختبار الرحلة الكاملة كأولوية مباشرة تالية دون خلطه مع unit tests.
+تعمل الآن Playwright browser E2E على PostgreSQL seed قابلة لإعادة الإنشاء. يغطي الاختبار landing/auth، تسجيل الدخول، dashboard، النشر والإعجاب والتعليق، التنقل إلى events وnotifications وprofile وadmin، والاستجابة على شاشة هاتف. تبقى اختبارات database integration الأعمق للمعاملات وحالات الصلاحيات أولوية لاحقة منفصلة عن رحلة المتصفح.

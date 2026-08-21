@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type User = {
   id: string;
@@ -298,6 +298,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [selected, setSelected] = useState<Community | null>(null);
   const [scope, setScope] = useState<{ type: 'community' | 'group'; id: string }>({ type: 'community', id: '' });
   const [posts, setPosts] = useState<Post[]>([]);
+  const feedRequestVersion = useRef(0);
   const [view, setView] = useState<View>('feed');
   const [notice, setNotice] = useState<Notice>(null);
   const unreadCount = notifications.filter((item) => !item.read_at).length;
@@ -322,7 +323,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   useEffect(() => { load().catch((error) => setNotice({ tone: 'error', message: error instanceof Error ? error.message : 'تعذر تحميل مساحة WB' })); }, []);
   useEffect(() => {
     if (!scope.id || view !== 'feed') return;
-    api<Post[]>(`feeds/${scope.type}/${scope.id}`).then(setPosts).catch((error) => setNotice({ tone: 'error', message: error.message }));
+    const requestVersion = ++feedRequestVersion.current;
+    api<Post[]>(`feeds/${scope.type}/${scope.id}`).then((nextPosts) => {
+      if (requestVersion === feedRequestVersion.current) setPosts(nextPosts);
+    }).catch((error) => setNotice({ tone: 'error', message: error.message }));
   }, [scope, view]);
 
   function selectCommunity(community: Community) {
@@ -380,7 +384,18 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           </aside>
           <section className="content-panel panel-enter" key={view}>
             {notice && <div className={`alert ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}><span>{notice.message}</span><button className="alert-close" onClick={() => setNotice(null)} aria-label="إغلاق التنبيه">إغلاق</button></div>}
-            {view === 'feed' && <FeedView user={user} selected={selected} communities={communities} posts={posts} onSelect={selectCommunity} onJoin={join} onLike={like} onNotice={setNotice} onCreated={(post) => setPosts((current) => [post, ...current])} onUpdated={(post) => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, ...post } : item))} onDeleted={(id) => setPosts((current) => current.filter((item) => item.id !== id))} />}
+            {view === 'feed' && <FeedView user={user} selected={selected} communities={communities} posts={posts} onSelect={selectCommunity} onJoin={join} onLike={like} onNotice={setNotice} onCreated={(post) => {
+              feedRequestVersion.current += 1;
+              const normalizedPost: Post = {
+                ...post,
+                author_id: post.author_id ?? user.id,
+                author_name: post.author_name || user.displayName,
+                comment_count: post.comment_count ?? 0,
+                like_count: post.like_count ?? 0,
+                liked: post.liked ?? false,
+              };
+              setPosts((current) => [normalizedPost, ...current]);
+            }} onUpdated={(post) => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, ...post } : item))} onDeleted={(id) => setPosts((current) => current.filter((item) => item.id !== id))} />}
             {view === 'events' && <EventsView events={events} onRefresh={load} onNotice={setNotice} />}
             {view === 'notifications' && <NotificationsView notifications={notifications} onMarkRead={markRead} />}
             {view === 'profile' && <ProfileView user={user} onNotice={setNotice} />}
@@ -453,7 +468,17 @@ function PostCard({ post, user, onLike, onNotice, onUpdated, onDeleted }: { post
     event.preventDefault();
     if (!commentBody.trim()) return;
     setBusy(true);
-    try { const comment = await api<Comment>(`posts/${post.id}/comments`, { method: 'POST', body: JSON.stringify({ body: commentBody }) }); setComments((current) => [...current, comment]); setCommentBody(''); }
+    try {
+      const comment = await api<Comment>(`posts/${post.id}/comments`, { method: 'POST', body: JSON.stringify({ body: commentBody }) });
+      const normalizedComment: Comment = {
+        ...comment,
+        author_id: comment.author_id ?? user.id,
+        author_name: comment.author_name || user.displayName,
+        created_at: comment.created_at ?? new Date().toISOString(),
+      };
+      setComments((current) => [...current, normalizedComment]);
+      setCommentBody('');
+    }
     catch (error) { onNotice({ tone: 'error', message: error instanceof Error ? error.message : 'تعذر إضافة التعليق' }); }
     finally { setBusy(false); }
   }
