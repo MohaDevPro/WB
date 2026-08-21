@@ -182,3 +182,68 @@ jobs:
 
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level=high
+
+
+  e2e:
+    name: UI and end-to-end browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    needs: validate
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wb
+          POSTGRES_PASSWORD: wb
+          POSTGRES_DB: wb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wb -d wb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://wb:wb@localhost:5432/wb
+      EMAIL_MODE: console
+      EVENT_URL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      SEED_ADMIN_EMAIL: admin@wb.local
+      SEED_ADMIN_PASSWORD: ChangeMe123!
+      API_ORIGIN: http://localhost:4000
+      WEB_ORIGIN: http://localhost:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations and seed
+        run: pnpm db:migrate && pnpm db:seed
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser E2E suite
+        run: pnpm test:e2e
+
+      - name: Upload E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wb-e2e-report
+          path: |
+            reports/e2e/
+            test-results/
+          if-no-files-found: warn

@@ -10,12 +10,14 @@
     "test": "pnpm --filter @wb/api test",
     "test:coverage": "pnpm --filter @wb/api test:coverage",
     "test:mutation": "pnpm exec stryker run",
+    "test:e2e": "playwright test",
     "quality:metrics": "node scripts/uncle-bob-metrics.mjs --strict",
     "quality": "pnpm check && pnpm test:coverage && pnpm test:mutation && pnpm quality:metrics",
     "db:migrate": "pnpm --filter @wb/api db:migrate",
     "db:seed": "pnpm --filter @wb/api db:seed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/typescript-checker": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
